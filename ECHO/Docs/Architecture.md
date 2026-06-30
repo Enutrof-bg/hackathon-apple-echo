@@ -39,19 +39,23 @@ The current SwiftUI screens are intentionally basic. They exist to test technica
 | Trash purge | `EchoMemoryPersistenceService.purgeExpiredDeletedMemories(_:in:)` |
 | Edit | `EchoMemoryPersistenceService.update(_:with:in:)` |
 | AI extraction | Temporary local heuristic service returning `EchoMemoryDraft` |
-| Speech | Not implemented yet |
+| Speech | `SpeechTranscriptionService` using Speech + AVFAudio; UI exposes `Speak` and `Type` modes; locale selected from iOS preferred languages |
 
 ## Main Files
 
 | File | Role |
 |---|---|
 | `ECHOApp.swift` | App entry point and SwiftData `modelContainer` setup |
+| `Info.plist` | Privacy usage descriptions for microphone and speech recognition |
 | `ContentView.swift` | Root view wrapper |
 | `Models/EchoMemory.swift` | SwiftData model and category/emotion enums |
 | `Models/EchoMemoryDraft.swift` | Non-persisted draft used by extraction and review flows |
 | `Models/EchoUserFacingError.swift` | Shared UI-safe error payload for alerts |
+| `Models/CaptureInputMode.swift` | Explicit `Speak` / `Type` capture mode contract |
 | `Services/AIExtractionService.swift` | Temporary text-to-card extraction logic returning drafts |
-| `Services/EchoMemoryPersistenceService.swift` | Centralized SwiftData insert/update/delete operations |
+| `Services/EchoMemoryPersistenceService.swift` | Centralized SwiftData insert/update/trash operations |
+| `Services/SpeechTranscriptionService.swift` | Speech-to-text service with permission and audio capture handling |
+| `Services/SpeechRecognitionLocaleProvider.swift` | Chooses a supported Speech locale from iOS preferred languages |
 | `Views/HomeView.swift` | Basic collection view and capture entry point |
 | `Views/CaptureView.swift` | Basic capture fallback using typed text |
 | `Views/ReviewCardView.swift` | Review generated card before saving |
@@ -187,7 +191,7 @@ Do not:
 
 | Situation | Current Behavior |
 |---|---|
-| Speech unavailable | User can type the memory manually |
+| Speech unavailable | User can continue in the explicit `Type` mode |
 | AI unavailable | Local heuristic service creates a rough card |
 | Empty memory | User receives an error and can still continue manually |
 | No saved data | Empty state appears in collection |

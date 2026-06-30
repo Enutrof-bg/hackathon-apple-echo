@@ -1,7 +1,70 @@
 import Foundation
+import FoundationModels
 
 struct AIExtractionService {
-    func createDraft(from transcript: String) -> EchoMemoryDraft {
+    func createDraft(from transcript: String) async -> EchoMemoryDraft {
+        let cleanedTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanedTranscript.isEmpty else {
+            return fallbackDraft(from: cleanedTranscript)
+        }
+
+        do {
+            return try await createFoundationModelDraft(from: cleanedTranscript)
+        } catch {
+            return fallbackDraft(from: cleanedTranscript)
+        }
+    }
+
+    private func createFoundationModelDraft(from transcript: String) async throws -> EchoMemoryDraft {
+        let model = SystemLanguageModel.default
+        guard model.isAvailable else {
+            throw AIExtractionError.foundationModelUnavailable
+        }
+
+        let session = LanguageModelSession(
+            model: model,
+            instructions: """
+            You create personal cultural memory cards for Echo.
+            Preserve the user's personal memory. Do not invent creator or year if uncertain.
+            Choose exactly one allowed category and one allowed emotion. Keep the echo line emotional, concrete, and under 18 words.
+            Interface output should be English, but preserve proper nouns exactly when possible.
+            """
+        )
+
+        let response = try await session.respond(
+            to: prompt(for: transcript),
+            generating: GeneratedEchoDraft.self
+        )
+
+        return response.content.makeDraft(originalTranscript: transcript).sanitized
+    }
+
+    private func prompt(for transcript: String) -> String {
+        """
+        Extract an Echo memory card from this transcript.
+
+        Allowed categories: \(EchoCategory.allCases.map(\.title).joined(separator: ", "))
+        Allowed emotions: \(EchoEmotion.allCases.map(\.title).joined(separator: ", "))
+
+        Rules:
+        - title: the cultural work, place, object, or moment being remembered.
+        - creator: only if clearly known from the transcript or very likely for a famous work.
+        - category: one allowed category only.
+        - emotion: one dominant allowed emotion only.
+        - memory: preserve the personal memory in first person if possible.
+        - echoLine: one short poetic line, maximum 18 words.
+        - year: only if explicitly mentioned or clearly present.
+        - If creator or year is uncertain, return an empty string.
+
+        Transcript:
+        \"\"\"
+        \(transcript)
+        \"\"\"
+        """
+    }
+
+    private func fallbackDraft(from transcript: String) -> EchoMemoryDraft {
         let cleanedTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = extractTitle(from: cleanedTranscript)
         let category = detectCategory(in: cleanedTranscript)
@@ -97,5 +160,73 @@ struct AIExtractionService {
         case .love: "A keepsake shaped by closeness."
         case .curiosity: "A spark that kept asking to be followed."
         }
+    }
+}
+
+@Generable(description: "A structured Echo cultural memory card")
+private struct GeneratedEchoDraft {
+    @Guide(description: "The cultural work, place, object, or moment name")
+    var title: String
+
+    @Guide(description: "Creator name if certain, otherwise empty")
+    var creator: String
+
+    @Guide(description: "One of: Film, Book, Music, Painting, Video Game, Performance, Place, Object, Other")
+    var category: String
+
+    @Guide(description: "One of: Nostalgia, Joy, Wonder, Melancholy, Calm, Shock, Love, Curiosity")
+    var emotion: String
+
+    @Guide(description: "The personal memory, preserving the user's perspective")
+    var memory: String
+
+    @Guide(description: "Short poetic line, maximum 18 words")
+    var echoLine: String
+
+    @Guide(description: "Year if certain, otherwise empty")
+    var year: String
+
+    func makeDraft(originalTranscript: String) -> EchoMemoryDraft {
+        EchoMemoryDraft(
+            title: title,
+            creator: creator.nilIfBlank,
+            category: EchoCategory(generatedValue: category),
+            emotion: EchoEmotion(generatedValue: emotion),
+            memory: memory,
+            echoLine: echoLine,
+            year: year.nilIfBlank,
+            originalTranscript: originalTranscript
+        )
+    }
+}
+
+private enum AIExtractionError: Error {
+    case foundationModelUnavailable
+}
+
+private extension EchoCategory {
+    init(generatedValue: String) {
+        let normalizedValue = generatedValue.normalizedGeneratedValue
+        self = Self.allCases.first { category in
+            category.title.normalizedGeneratedValue == normalizedValue || category.rawValue.normalizedGeneratedValue == normalizedValue
+        } ?? .other
+    }
+}
+
+private extension EchoEmotion {
+    init(generatedValue: String) {
+        let normalizedValue = generatedValue.normalizedGeneratedValue
+        self = Self.allCases.first { emotion in
+            emotion.title.normalizedGeneratedValue == normalizedValue || emotion.rawValue.normalizedGeneratedValue == normalizedValue
+        } ?? .nostalgia
+    }
+}
+
+private extension String {
+    var normalizedGeneratedValue: String {
+        folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "-", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

@@ -45,19 +45,23 @@ Codex should prioritize technical architecture and plug-and-play integration poi
 - `EchoMemoryDraft` as the non-persisted review/generation model
 - `@Query` for collection reads
 - `EchoMemoryPersistenceService` for insert/update/soft-delete/restore/permanent-delete persistence
-- Temporary local `AIExtractionService` heuristic returning drafts until FoundationModels is integrated
-- Speech framework not implemented yet
+- `AIExtractionService` uses FoundationModels / Apple Intelligence guided generation when available, then falls back to the local heuristic draft extraction
+- Speech framework implemented through `SpeechTranscriptionService` using `SpeechAnalyzer` + `DictationTranscriber`; microphone capture uses `CaptureInputSequenceProvider` managed by `SpeechCaptureSessionController`, not `AVAudioEngine.installTap`; capture supports explicit `Speak` and `Type` modes; recognition locale is selected automatically from iOS preferred languages via `SpeechRecognitionLocaleProvider`; proper-name recognition is biased with `SpeechRecognitionContextProvider` and `AnalysisContext.contextualStrings`
 - No backend
 - No login
 - No third-party APIs
 
 ## Important Files
 
+- `ECHO/ECHO/Info.plist`
 - `ECHO/ECHO/Models/EchoMemory.swift`
 - `ECHO/ECHO/Models/EchoMemoryDraft.swift`
 - `ECHO/ECHO/Models/EchoUserFacingError.swift`
+- `ECHO/ECHO/Models/CaptureInputMode.swift`
 - `ECHO/ECHO/Services/AIExtractionService.swift`
 - `ECHO/ECHO/Services/EchoMemoryPersistenceService.swift`
+- `ECHO/ECHO/Services/SpeechTranscriptionService.swift`
+- `ECHO/ECHO/Services/SpeechRecognitionLocaleProvider.swift`
 - `ECHO/ECHO/ECHOApp.swift`
 - `ECHO/ECHO/Views/HomeView.swift`
 - `ECHO/ECHO/Views/CaptureView.swift`
@@ -134,7 +138,7 @@ Current agreed order:
 
 1. SwiftData persistence. Done.
 2. Stabilize the MVP SwiftData flow. Done for the SwiftData data layer; manual UI runtime test was blocked by simulator connection.
-3. Add Speech transcription.
+3. Add Speech transcription. Done in code with `SpeechAnalyzer` + `DictationTranscriber`; requires runtime testing on a real device for microphone permission and downloaded language assets.
 4. Add FoundationModels / Apple Intelligence structured extraction.
 5. Improve error handling and fallback states.
 6. Add App Intents / Siri if time allows.
@@ -147,3 +151,5 @@ If the user asks to continue, start with step 3: add Speech transcription.
 Before starting Speech, mention that the SwiftData data layer was validated with insert, fetch, edit, delete, and save in an isolated ModelContainer. Manual UI runtime verification should still be done in Xcode or on device when the simulator connection is available.
 
 Do not start FoundationModels until the user confirms moving to that step.
+
+Siri/App Intents reflection: implement later as a thin entry point that opens the capture flow, preferably after Speech and FoundationModels are stable. Do not make App Intents a dependency of the MVP creation flow.
