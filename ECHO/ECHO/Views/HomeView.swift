@@ -2,16 +2,29 @@ import SwiftData
 import SwiftUI
 
 struct HomeView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \EchoMemory.createdAt, order: .reverse) private var memories: [EchoMemory]
+
     @State private var isShowingCapture = false
     @State private var searchText = ""
+    @State private var purgeError: EchoUserFacingError?
+
+    private let persistenceService = EchoMemoryPersistenceService()
+
+    private var activeMemories: [EchoMemory] {
+        memories.filter { $0.deletedAt == nil }
+    }
+
+    private var deletedMemories: [EchoMemory] {
+        memories.filter { $0.deletedAt != nil }
+    }
 
     private var filteredMemories: [EchoMemory] {
         guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return memories
+            return activeMemories
         }
 
-        return memories.filter { memory in
+        return activeMemories.filter { memory in
             memory.title.localizedCaseInsensitiveContains(searchText)
             || memory.echoLine.localizedCaseInsensitiveContains(searchText)
             || memory.memory.localizedCaseInsensitiveContains(searchText)
@@ -30,7 +43,7 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         header
 
-                        if memories.isEmpty {
+                        if activeMemories.isEmpty {
                             emptyState
                         } else {
                             memoryList
@@ -42,6 +55,15 @@ struct HomeView: View {
             .navigationTitle("Echo")
             .searchable(text: $searchText, prompt: "Search echoes")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        RecentlyDeletedView(memories: deletedMemories)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .accessibilityLabel("Recently Deleted")
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isShowingCapture = true
@@ -53,6 +75,16 @@ struct HomeView: View {
             }
             .sheet(isPresented: $isShowingCapture) {
                 CaptureView()
+            }
+            .task {
+                purgeExpiredDeletedMemoriesIfNeeded()
+            }
+            .alert(item: $purgeError) { error in
+                Alert(
+                    title: Text("Recently Deleted could not be cleaned"),
+                    message: Text(error.message),
+                    dismissButton: .default(Text("OK"))
+                )
             }
         }
     }
@@ -104,6 +136,14 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    private func purgeExpiredDeletedMemoriesIfNeeded() {
+        do {
+            try persistenceService.purgeExpiredDeletedMemories(memories, in: modelContext)
+        } catch {
+            purgeError = EchoUserFacingError(message: error.localizedDescription)
         }
     }
 }

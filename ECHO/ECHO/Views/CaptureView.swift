@@ -5,7 +5,7 @@ struct CaptureView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var transcript = ""
-    @State private var generatedMemory: EchoMemory?
+    @State private var generatedDraft: EchoMemoryDraft?
     @State private var errorMessage: String?
 
     private let extractionService = AIExtractionService()
@@ -54,11 +54,11 @@ struct CaptureView: View {
                     let cleanedTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !cleanedTranscript.isEmpty else {
                         errorMessage = "Echo could not shape this memory. You can still save it manually."
-                        generatedMemory = extractionService.createMemory(from: "")
+                        generatedDraft = extractionService.createDraft(from: "")
                         return
                     }
 
-                    generatedMemory = extractionService.createMemory(from: cleanedTranscript)
+                    generatedDraft = extractionService.createDraft(from: cleanedTranscript)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -77,9 +77,9 @@ struct CaptureView: View {
                     }
                 }
             }
-            .sheet(item: $generatedMemory) { memory in
-                ReviewCardView(memory: memory) {
-                    generatedMemory = nil
+            .sheet(item: $generatedDraft) { draft in
+                ReviewCardView(draft: draft) {
+                    generatedDraft = nil
                     dismiss()
                 }
             }

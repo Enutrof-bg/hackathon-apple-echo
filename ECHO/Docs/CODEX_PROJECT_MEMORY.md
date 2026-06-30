@@ -41,10 +41,11 @@ Codex should prioritize technical architecture and plug-and-play integration poi
 
 - SwiftUI for UI
 - SwiftData for local persistence
-- `EchoMemory` as the persisted model
+- `EchoMemory` as the persisted SwiftData model
+- `EchoMemoryDraft` as the non-persisted review/generation model
 - `@Query` for collection reads
-- `ModelContext` for insert/delete/edit persistence
-- Temporary local `AIExtractionService` heuristic until FoundationModels is integrated
+- `EchoMemoryPersistenceService` for insert/update/soft-delete/restore/permanent-delete persistence
+- Temporary local `AIExtractionService` heuristic returning drafts until FoundationModels is integrated
 - Speech framework not implemented yet
 - No backend
 - No login
@@ -53,7 +54,10 @@ Codex should prioritize technical architecture and plug-and-play integration poi
 ## Important Files
 
 - `ECHO/ECHO/Models/EchoMemory.swift`
+- `ECHO/ECHO/Models/EchoMemoryDraft.swift`
+- `ECHO/ECHO/Models/EchoUserFacingError.swift`
 - `ECHO/ECHO/Services/AIExtractionService.swift`
+- `ECHO/ECHO/Services/EchoMemoryPersistenceService.swift`
 - `ECHO/ECHO/ECHOApp.swift`
 - `ECHO/ECHO/Views/HomeView.swift`
 - `ECHO/ECHO/Views/CaptureView.swift`
@@ -80,6 +84,7 @@ final class EchoMemory {
     var year: String?
     var originalTranscript: String?
     var createdAt: Date
+    var deletedAt: Date?
 }
 ```
 
@@ -117,6 +122,10 @@ Emotions:
 - Preserve manual text fallback even after Speech is added.
 - Preserve manual review/edit fallback even after AI is added.
 - Use SwiftData, not a custom JSON store.
+- Use `EchoMemoryDraft` for temporary generated/review data; create `EchoMemory` only when saving.
+- Use `EchoMemoryPersistenceService` for insert, update, soft delete, restore, permanent delete, and purge so save errors are not swallowed.
+- Deleting from detail moves an Echo to Recently Deleted, where it can be restored or permanently deleted.
+- Deleted echoes are purged after 30 days by `purgeExpiredDeletedMemories`.
 - Use Apple documentation search before implementing newer Apple frameworks like Speech, FoundationModels, App Intents, or Liquid Glass.
 
 ## Development Order

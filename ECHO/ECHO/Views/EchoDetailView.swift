@@ -7,30 +7,44 @@ struct EchoDetailView: View {
 
     let memory: EchoMemory
     @State private var isEditing = false
+    @State private var deleteError: EchoUserFacingError?
+    @State private var isShowingUndoBubble = false
+    @State private var pendingDismissTask: Task<Void, Never>?
+
+    private let persistenceService = EchoMemoryPersistenceService()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                EchoCardView(memory: memory)
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    EchoCardView(memory: memory)
 
-                detailSection(title: "Memory", text: memory.memory)
-                detailSection(title: "Echo", text: memory.echoLine)
+                    detailSection(title: "Memory", text: memory.memory)
+                    detailSection(title: "Echo", text: memory.echoLine)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    detailRow("Category", memory.category.title)
-                    detailRow("Emotion", memory.emotion.title)
-                    detailRow("Created", memory.createdAt.formatted(date: .abbreviated, time: .omitted))
+                    VStack(alignment: .leading, spacing: 8) {
+                        detailRow("Category", memory.category.title)
+                        detailRow("Emotion", memory.emotion.title)
+                        detailRow("Created", memory.createdAt.formatted(date: .abbreviated, time: .omitted))
 
-                    if let year = memory.year, !year.isEmpty {
-                        detailRow("Year", year)
+                        if let year = memory.year, !year.isEmpty {
+                            detailRow("Year", year)
+                        }
                     }
+                    .padding(16)
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .padding(16)
-                .background(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(20)
             }
-            .padding(20)
+
+            if isShowingUndoBubble {
+                undoBubble
+                    .padding(20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: isShowingUndoBubble)
         .background(Color(.systemGroupedBackground))
         .navigationTitle(memory.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -39,25 +53,85 @@ struct EchoDetailView: View {
                 Button("Edit") {
                     isEditing = true
                 }
+                .disabled(memory.deletedAt != nil)
             }
 
             ToolbarItem(placement: .bottomBar) {
                 Button(role: .destructive) {
-                    deleteMemory()
+                    moveMemoryToTrash()
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                    Label("Move to Recently Deleted", systemImage: "trash")
                 }
+                .disabled(memory.deletedAt != nil)
             }
         }
         .sheet(isPresented: $isEditing) {
             EditEchoView(memory: memory)
         }
+        .alert(item: $deleteError) { error in
+            Alert(
+                title: Text("Echo could not be moved"),
+                message: Text(error.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        .onDisappear {
+            pendingDismissTask?.cancel()
+        }
     }
 
-    private func deleteMemory() {
-        modelContext.delete(memory)
-        try? modelContext.save()
-        dismiss()
+    private var undoBubble: some View {
+        HStack(spacing: 12) {
+            Text("Moved to Recently Deleted")
+                .font(.subheadline)
+                .foregroundStyle(.white)
+
+            Spacer()
+
+            Button("Undo") {
+                restoreFromTrash()
+            }
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.black.opacity(0.86))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func moveMemoryToTrash() {
+        do {
+            try persistenceService.moveToTrash(memory, in: modelContext)
+            isShowingUndoBubble = true
+            scheduleDismissAfterUndoWindow()
+        } catch {
+            deleteError = EchoUserFacingError(message: error.localizedDescription)
+        }
+    }
+
+    private func restoreFromTrash() {
+        pendingDismissTask?.cancel()
+
+        do {
+            try persistenceService.restore(memory, in: modelContext)
+            isShowingUndoBubble = false
+        } catch {
+            deleteError = EchoUserFacingError(message: error.localizedDescription)
+        }
+    }
+
+    private func scheduleDismissAfterUndoWindow() {
+        pendingDismissTask?.cancel()
+        pendingDismissTask = Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                dismiss()
+            }
+        }
     }
 
     private func detailSection(title: String, text: String) -> some View {

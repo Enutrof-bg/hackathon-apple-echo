@@ -29,12 +29,16 @@ The current SwiftUI screens are intentionally basic. They exist to test technica
 |---|---|
 | UI framework | SwiftUI |
 | Local persistence | SwiftData |
-| Data model | `EchoMemory` |
+| Persisted data model | `EchoMemory` |
+| Temporary card draft | `EchoMemoryDraft` |
 | Collection loading | `@Query` |
-| Create/save | `ModelContext.insert(_:)` |
-| Delete | `ModelContext.delete(_:)` |
-| Edit | Direct mutation of the SwiftData model object |
-| AI extraction | Temporary local heuristic service |
+| Create/save | `EchoMemoryPersistenceService.insert(_:in:)` |
+| Move to trash | `EchoMemoryPersistenceService.moveToTrash(_:in:)` |
+| Restore | `EchoMemoryPersistenceService.restore(_:in:)` |
+| Permanent delete | `EchoMemoryPersistenceService.deletePermanently(_:in:)` |
+| Trash purge | `EchoMemoryPersistenceService.purgeExpiredDeletedMemories(_:in:)` |
+| Edit | `EchoMemoryPersistenceService.update(_:with:in:)` |
+| AI extraction | Temporary local heuristic service returning `EchoMemoryDraft` |
 | Speech | Not implemented yet |
 
 ## Main Files
@@ -44,7 +48,10 @@ The current SwiftUI screens are intentionally basic. They exist to test technica
 | `ECHOApp.swift` | App entry point and SwiftData `modelContainer` setup |
 | `ContentView.swift` | Root view wrapper |
 | `Models/EchoMemory.swift` | SwiftData model and category/emotion enums |
-| `Services/AIExtractionService.swift` | Temporary text-to-card extraction logic |
+| `Models/EchoMemoryDraft.swift` | Non-persisted draft used by extraction and review flows |
+| `Models/EchoUserFacingError.swift` | Shared UI-safe error payload for alerts |
+| `Services/AIExtractionService.swift` | Temporary text-to-card extraction logic returning drafts |
+| `Services/EchoMemoryPersistenceService.swift` | Centralized SwiftData insert/update/delete operations |
 | `Views/HomeView.swift` | Basic collection view and capture entry point |
 | `Views/CaptureView.swift` | Basic capture fallback using typed text |
 | `Views/ReviewCardView.swift` | Review generated card before saving |
@@ -128,10 +135,11 @@ Each emotion exposes:
 The design team can replace most SwiftUI views as long as these contracts stay intact:
 
 - Read saved memories with `@Query(sort: \EchoMemory.createdAt, order: .reverse)`.
-- Save a new memory with `modelContext.insert(memory)`.
-- Delete a memory with `modelContext.delete(memory)`.
-- Edit by mutating the existing `EchoMemory` object properties.
-- Keep `EchoMemory`, `EchoCategory`, and `EchoEmotion` stable unless the technical team coordinates migration changes.
+- Use `EchoMemoryDraft` for generated or manually edited data before persistence.
+- Save a new memory with `EchoMemoryPersistenceService.insert(_:in:)`.
+- Delete a memory with `EchoMemoryPersistenceService.delete(_:in:)`.
+- Edit an existing memory with `EchoMemoryPersistenceService.update(_:with:in:)`.
+- Keep `EchoMemory`, `EchoMemoryDraft`, `EchoCategory`, and `EchoEmotion` stable unless the technical team coordinates migration changes.
 
 Recommended reusable entry points for design:
 

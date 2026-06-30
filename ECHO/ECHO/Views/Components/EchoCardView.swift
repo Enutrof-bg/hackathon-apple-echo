@@ -1,31 +1,35 @@
 import SwiftUI
 
 struct EchoCardView: View {
-    let memory: EchoMemory
+    private let content: any EchoCardPresentable
+
+    init(memory: some EchoCardPresentable) {
+        self.content = memory
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Label(memory.category.title, systemImage: memory.category.symbolName)
+                Label(content.category.title, systemImage: content.category.symbolName)
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(accentColor)
 
                 Spacer()
 
-                Text(memory.emotion.title)
+                Text(content.emotion.title)
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(memory.title)
+                Text(content.title)
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(2)
 
-                if let creator = memory.creator, !creator.isEmpty {
+                if let creator = content.creator, !creator.isEmpty {
                     Text(creator)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -33,7 +37,7 @@ struct EchoCardView: View {
                 }
             }
 
-            Text(memory.echoLine)
+            Text(content.echoLine)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
@@ -49,7 +53,7 @@ struct EchoCardView: View {
     }
 
     private var accentColor: Color {
-        switch memory.emotion {
+        switch content.emotion {
         case .nostalgia: .indigo
         case .joy: .yellow
         case .wonder: .purple
@@ -64,7 +68,7 @@ struct EchoCardView: View {
 
 #Preview {
     EchoCardView(
-        memory: EchoMemory(
+        memory: EchoMemoryDraft(
             title: "The Lord of the Rings",
             creator: "J.R.R. Tolkien",
             category: .film,

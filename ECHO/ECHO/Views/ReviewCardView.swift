@@ -13,19 +13,21 @@ struct ReviewCardView: View {
     @State private var echoLine: String
     @State private var year: String
     @State private var isEditing = false
+    @State private var saveError: EchoUserFacingError?
 
     private let originalTranscript: String?
     private let onSave: (() -> Void)?
+    private let persistenceService = EchoMemoryPersistenceService()
 
-    init(memory: EchoMemory, onSave: (() -> Void)? = nil) {
-        _title = State(initialValue: memory.title)
-        _creator = State(initialValue: memory.creator ?? "")
-        _category = State(initialValue: memory.category)
-        _emotion = State(initialValue: memory.emotion)
-        _memoryText = State(initialValue: memory.memory)
-        _echoLine = State(initialValue: memory.echoLine)
-        _year = State(initialValue: memory.year ?? "")
-        originalTranscript = memory.originalTranscript
+    init(draft: EchoMemoryDraft, onSave: (() -> Void)? = nil) {
+        _title = State(initialValue: draft.title)
+        _creator = State(initialValue: draft.creator ?? "")
+        _category = State(initialValue: draft.category)
+        _emotion = State(initialValue: draft.emotion)
+        _memoryText = State(initialValue: draft.memory)
+        _echoLine = State(initialValue: draft.echoLine)
+        _year = State(initialValue: draft.year ?? "")
+        originalTranscript = draft.originalTranscript
         self.onSave = onSave
     }
 
@@ -33,7 +35,7 @@ struct ReviewCardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
-                    EchoCardView(memory: previewMemory)
+                    EchoCardView(memory: previewDraft)
 
                     if isEditing {
                         EchoFormView(
@@ -67,49 +69,52 @@ struct ReviewCardView: View {
 
                 ToolbarItem(placement: .bottomBar) {
                     Button("Save Echo") {
-                        saveMemory()
+                        saveDraft()
                     }
                     .buttonStyle(.borderedProminent)
                 }
             }
+            .alert(item: $saveError) { error in
+                Alert(
+                    title: Text("Echo could not be saved"),
+                    message: Text(error.message),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
         }
     }
 
-    private var previewMemory: EchoMemory {
-        makeMemory()
+    private var previewDraft: EchoMemoryDraft {
+        makeDraft().sanitized
     }
 
-    private func saveMemory() {
-        modelContext.insert(makeMemory())
-        try? modelContext.save()
-        dismiss()
-        onSave?()
+    private func saveDraft() {
+        do {
+            try persistenceService.insert(makeDraft(), in: modelContext)
+            dismiss()
+            onSave?()
+        } catch {
+            saveError = EchoUserFacingError(message: error.localizedDescription)
+        }
     }
 
-    private func makeMemory() -> EchoMemory {
-        EchoMemory(
-            title: title.isEmpty ? "Untitled Echo" : title,
+    private func makeDraft() -> EchoMemoryDraft {
+        EchoMemoryDraft(
+            title: title,
             creator: creator.nilIfBlank,
             category: category,
             emotion: emotion,
-            memory: memoryText.isEmpty ? "A memory I want to keep." : memoryText,
-            echoLine: echoLine.isEmpty ? "A memory worth keeping." : echoLine,
+            memory: memoryText,
+            echoLine: echoLine,
             year: year.nilIfBlank,
             originalTranscript: originalTranscript
         )
     }
 }
 
-private extension String {
-    var nilIfBlank: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-}
-
 #Preview {
     ReviewCardView(
-        memory: EchoMemory(
+        draft: EchoMemoryDraft(
             title: "Spirited Away",
             category: .film,
             emotion: .wonder,

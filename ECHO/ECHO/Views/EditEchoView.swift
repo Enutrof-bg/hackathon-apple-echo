@@ -14,6 +14,9 @@ struct EditEchoView: View {
     @State private var memoryText: String
     @State private var echoLine: String
     @State private var year: String
+    @State private var saveError: EchoUserFacingError?
+
+    private let persistenceService = EchoMemoryPersistenceService()
 
     init(memory: EchoMemory) {
         self.memory = memory
@@ -52,29 +55,40 @@ struct EditEchoView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        applyChanges()
-                        dismiss()
+                        saveChanges()
                     }
                 }
+            }
+            .alert(item: $saveError) { error in
+                Alert(
+                    title: Text("Echo could not be updated"),
+                    message: Text(error.message),
+                    dismissButton: .default(Text("OK"))
+                )
             }
         }
     }
 
-    private func applyChanges() {
-        memory.title = title.isEmpty ? "Untitled Echo" : title
-        memory.creator = creator.nilIfBlank
-        memory.category = category
-        memory.emotion = emotion
-        memory.memory = memoryText.isEmpty ? "A memory I want to keep." : memoryText
-        memory.echoLine = echoLine.isEmpty ? "A memory worth keeping." : echoLine
-        memory.year = year.nilIfBlank
-        try? modelContext.save()
+    private func saveChanges() {
+        do {
+            try persistenceService.update(memory, with: draft, in: modelContext)
+            dismiss()
+        } catch {
+            saveError = EchoUserFacingError(message: error.localizedDescription)
+        }
     }
-}
 
-private extension String {
-    var nilIfBlank: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+    private var draft: EchoMemoryDraft {
+        EchoMemoryDraft(
+            id: memory.id,
+            title: title,
+            creator: creator.nilIfBlank,
+            category: category,
+            emotion: emotion,
+            memory: memoryText,
+            echoLine: echoLine,
+            year: year.nilIfBlank,
+            originalTranscript: memory.originalTranscript
+        )
     }
 }

@@ -13,6 +13,7 @@ final class EchoMemory {
     var year: String?
     var originalTranscript: String?
     var createdAt: Date
+    var deletedAt: Date?
 
     init(
         id: UUID = UUID(),
@@ -24,7 +25,8 @@ final class EchoMemory {
         echoLine: String,
         year: String? = nil,
         originalTranscript: String? = nil,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        deletedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -36,6 +38,7 @@ final class EchoMemory {
         self.year = year
         self.originalTranscript = originalTranscript
         self.createdAt = createdAt
+        self.deletedAt = deletedAt
     }
 }
 

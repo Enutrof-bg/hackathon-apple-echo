@@ -1,19 +1,19 @@
 import Foundation
 
 struct AIExtractionService {
-    func createMemory(from transcript: String) -> EchoMemory {
+    func createDraft(from transcript: String) -> EchoMemoryDraft {
         let cleanedTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = extractTitle(from: cleanedTranscript)
         let category = detectCategory(in: cleanedTranscript)
         let emotion = detectEmotion(in: cleanedTranscript)
         let memory = cleanedTranscript.isEmpty ? "A memory I want to keep." : cleanedTranscript
 
-        return EchoMemory(
+        return EchoMemoryDraft(
             title: title,
             category: category,
             emotion: emotion,
             memory: memory,
-            echoLine: makeEchoLine(title: title, emotion: emotion),
+            echoLine: makeEchoLine(emotion: emotion),
             year: extractYear(from: cleanedTranscript),
             originalTranscript: cleanedTranscript.isEmpty ? nil : cleanedTranscript
         )
@@ -86,7 +86,7 @@ struct AIExtractionService {
         return String(text[range])
     }
 
-    private func makeEchoLine(title: String, emotion: EchoEmotion) -> String {
+    private func makeEchoLine(emotion: EchoEmotion) -> String {
         switch emotion {
         case .nostalgia: "A memory that still knows the way back."
         case .joy: "A bright trace of something that made life lighter."
