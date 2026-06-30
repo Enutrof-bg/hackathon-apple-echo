@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct ContentView: View {
@@ -8,4 +9,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .modelContainer(for: EchoMemory.self, inMemory: true)
 }

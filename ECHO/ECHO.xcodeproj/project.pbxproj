@@ -13,6 +13,8 @@
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* ECHO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ECHO.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E45AA2692FF3FEE500FD26B9 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		E45AA2952FF4261600FD26B9 /* Architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Architecture.md; sourceTree = "<group>"; };
+		E45AA2962FF4261600FD26B9 /* CODEX_PROJECT_MEMORY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODEX_PROJECT_MEMORY.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -38,6 +40,7 @@
 				000000000000000000000010 /* ECHO */,
 				000000000000000000000020 /* Products */,
 				E45AA2692FF3FEE500FD26B9 /* .gitignore */,
+				E45AA2942FF425E700FD26B9 /* Docs */,
 			);
 			sourceTree = "<group>";
 		};
@@ -47,6 +50,15 @@
 				000000000000000000000120 /* ECHO.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E45AA2942FF425E700FD26B9 /* Docs */ = {
+			isa = PBXGroup;
+			children = (
+				E45AA2952FF4261600FD26B9 /* Architecture.md */,
+				E45AA2962FF4261600FD26B9 /* CODEX_PROJECT_MEMORY.md */,
+			);
+			path = Docs;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
