@@ -97,11 +97,11 @@ struct ScribbleCanvas: View {
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let baseRadius = min(size.width, size.height) * radiusMultiplier
         let path = makeSingleScribblePath(center: center, radius: baseRadius, time: time)
-        let pressure = state == .recording ? 1.72 : 1.52
+        let pressure = state == .recording ? 1.94 : 1.72
 
         context.stroke(
             path,
-            with: .color(ScribbleEchoPalette.ink.opacity(0.90)),
+            with: .color(ScribbleEchoPalette.ink.opacity(0.95)),
             style: StrokeStyle(lineWidth: pressure, lineCap: .round, lineJoin: .round)
         )
     }
@@ -176,7 +176,7 @@ struct ScribbleCanvas: View {
         radius: CGFloat,
         time: TimeInterval
     ) -> Path {
-        let pointCount = state == .recording ? 620 : 520
+        let pointCount = state == .recording ? 780 : 660
         let time = CGFloat(time)
         let contraction: CGFloat = state == .pressed ? 0.82 : 1.0
         var points: [CGPoint] = []
@@ -185,17 +185,17 @@ struct ScribbleCanvas: View {
             let progress = CGFloat(pointIndex) / CGFloat(pointCount - 1)
             let t = progress * .pi * 2
             let drift = time * 0.42
-            let centerBias = 0.58 + 0.24 * sin(t * 9.0 + drift) + 0.18 * cos(t * 17.0 - drift * 0.7)
+            let centerBias = 0.54 + 0.25 * sin(t * 10.0 + drift) + 0.20 * cos(t * 19.0 - drift * 0.7)
             let outerPulse = pow(max(0, sin(t * 6.0 + sin(t * 11.0) * 1.8)), 5.0)
             let centerPulse = pow(abs(cos(t * 14.0 + drift * 0.8)), 2.4)
-            let densityScale = max(0.16, min(1.02, centerBias - centerPulse * 0.26 + outerPulse * 0.46))
+            let densityScale = max(0.13, min(1.04, centerBias - centerPulse * 0.30 + outerPulse * 0.48))
 
-            let rawX = sin(t * 13.0 + sin(t * 5.0) * 1.6 + drift)
-                + 0.72 * sin(t * 29.0 - drift * 0.8)
-                + 0.38 * cos(t * 47.0 + CGFloat(pointIndex % 13) * 0.21)
-            let rawY = cos(t * 11.0 + cos(t * 7.0) * 1.9 - drift * 0.6)
-                + 0.66 * sin(t * 31.0 + drift * 0.7)
-                + 0.42 * cos(t * 41.0 - CGFloat(pointIndex % 17) * 0.18)
+            let rawX = sin(t * 15.0 + sin(t * 5.0) * 1.8 + drift)
+                + 0.76 * sin(t * 33.0 - drift * 0.8)
+                + 0.42 * cos(t * 53.0 + CGFloat(pointIndex % 13) * 0.21)
+            let rawY = cos(t * 13.0 + cos(t * 7.0) * 2.0 - drift * 0.6)
+                + 0.70 * sin(t * 35.0 + drift * 0.7)
+                + 0.45 * cos(t * 47.0 - CGFloat(pointIndex % 17) * 0.18)
 
             let chaosX = tanh(rawX * 0.78) * densityScale
             let chaosY = tanh(rawY * 0.78) * densityScale
@@ -413,7 +413,7 @@ private struct ScribbleRipple: View {
 private enum ScribbleEchoPalette {
     static let ink = Color(red: 0.018, green: 0.016, blue: 0.014)
     static let sepia = Color(red: 0.420, green: 0.290, blue: 0.170)
-    static let paper = Color(red: 0.965, green: 0.945, blue: 0.895)
+    static let paper = Color.white
 }
 
 #Preview("Scribble Echo Button") {

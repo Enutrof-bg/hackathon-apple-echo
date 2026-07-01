@@ -24,9 +24,9 @@ struct ContentView: View {
 }
 
 enum EchoStyle {
-    static let background = Color(red: 0.982, green: 0.978, blue: 0.958)
-    static let surface = Color(red: 0.995, green: 0.992, blue: 0.976)
-    static let surfaceSecondary = Color(red: 0.928, green: 0.924, blue: 0.900)
+    static let background = Color.white
+    static let surface = Color.white
+    static let surfaceSecondary = Color(red: 0.940, green: 0.940, blue: 0.940)
     static let border = Color.black.opacity(0.72)
     static let ink = Color(red: 0.055, green: 0.055, blue: 0.052)
     static let mutedInk = Color.black.opacity(0.54)

@@ -94,30 +94,6 @@ struct HomeView: View {
                     .tracking(0.4)
 
                 Spacer()
-
-#if DEBUG
-                Menu {
-                    Button {
-                        insertPlaceholderEchoes()
-                    } label: {
-                        Label(isLoadingSampleEchoes ? "Generating Samples..." : "Load Sample Echoes", systemImage: "sparkles")
-                    }
-                    .disabled(isLoadingSampleEchoes || isRebuildingLinks)
-
-                    Button {
-                        rebuildEchoLinks()
-                    } label: {
-                        Label(isRebuildingLinks ? "Rebuilding Links..." : "Rebuild Echo Links", systemImage: "point.3.connected.trianglepath.dotted")
-                    }
-                    .disabled(activeMemories.count < 2 || isLoadingSampleEchoes || isRebuildingLinks)
-                } label: {
-                    Image(systemName: "person.circle")
-                        .font(.title3)
-                }
-#else
-                Image(systemName: "person.circle")
-                    .font(.title3)
-#endif
             }
 
             Rectangle()
