@@ -7,9 +7,12 @@ struct EchoCoverScanService {
     private let titleExtractionService = EchoTitleExtractionService()
 
     func scanCover(from image: UIImage) async -> EchoCoverScanResult {
-        if let result = try? await scanWithAppleIntelligence(image: image) {
+        #if canImport(FoundationModels, _version: 2.0)
+        if #available(iOS 27.0, *),
+           let result = try? await scanWithAppleIntelligence(image: image) {
             return result
         }
+        #endif
 
         if let result = try? await scanWithVisionOCR(image: image) {
             return result
@@ -26,6 +29,8 @@ struct EchoCoverScanService {
         )
     }
 
+    #if canImport(FoundationModels, _version: 2.0)
+    @available(iOS 27.0, *)
     private func scanWithAppleIntelligence(image: UIImage) async throws -> EchoCoverScanResult {
         let model = SystemLanguageModel.default
         guard model.isAvailable else {
@@ -60,6 +65,7 @@ struct EchoCoverScanService {
 
         return response.content.makeResult(source: .appleIntelligence)
     }
+    #endif
 
     private func scanWithVisionOCR(image: UIImage) async throws -> EchoCoverScanResult {
         guard let cgImage = image.cgImage else {
