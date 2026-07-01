@@ -48,11 +48,13 @@ struct EchoCardView: View {
                 }
             }
 
-            Text(content.echoLine)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if !content.echoLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(content.echoLine)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(16)
         .background(cardBackgroundColor)

@@ -2,8 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Echo uses the camera to scan a cover and prefill an Echo card.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Echo uses the microphone to capture your spoken memory.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Echo can use a selected photo when the camera is unavailable.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Echo uses speech recognition to turn your spoken memory into text.</string>
 </dict>

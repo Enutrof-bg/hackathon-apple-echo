@@ -74,8 +74,6 @@ struct EchoTitleExtractionService {
         let patterns = [
             #"^(.+)\s+d[’']\s*([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ’' .-]{2,})$"#,
             #"^(.+)\s+de\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ’' .-]{2,})$"#,
-            #"^(.+)\s+du\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ’' .-]{2,})$"#,
-            #"^(.+)\s+des\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ’' .-]{2,})$"#,
             #"^(.+)\s+par\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ’' .-]{2,})$"#,
             #"^(.+)\s+by\s+([A-Za-z][A-Za-z’' .-]{2,})$"#
         ]
@@ -147,7 +145,7 @@ struct EchoTitleExtractionService {
             .joined(separator: " ")
     }
 
-    fileprivate static let titleBoundary = #"\s+(.+?)(?=\s+(?:parce que|because|car|quand|when|mais|but|pour|so that|qui|which|apres|after|avant|before)\b|[.!?,;:]|$)"#
+    fileprivate static let titleBoundary = #"\s+(.+?)(?=\s+(?:parce que|because|car|quand|when|mais|but|pour|so that|qui|which|apres|after|avant|before|et\s+j[’']?|et\s+je|and\s+i)\b|[.!?,;:]|$)"#
 
     private static let patterns: [TitlePattern] = [
         TitlePattern(prefix: #"\bj[’']?aimerais\s+lire"#, category: .book, discoveryStatus: .notDiscovered, evidence: "future reading intent"),

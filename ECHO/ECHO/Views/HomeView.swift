@@ -7,6 +7,8 @@ struct HomeView: View {
 
     @State private var isShowingCapture = false
     @State private var searchText = ""
+    @State private var navigation = EchoAppNavigation.shared
+    @State private var handledCaptureRequestID = EchoAppNavigation.shared.captureRequestID
     @State private var purgeError: EchoUserFacingError?
 #if DEBUG
     @State private var isLoadingSampleEchoes = false
@@ -83,6 +85,11 @@ struct HomeView: View {
             }
             .task {
                 purgeExpiredDeletedMemoriesIfNeeded()
+            }
+            .onChange(of: navigation.captureRequestID) { _, requestID in
+                guard requestID != handledCaptureRequestID else { return }
+                handledCaptureRequestID = requestID
+                isShowingCapture = true
             }
             .alert(item: $purgeError) { error in
                 Alert(
