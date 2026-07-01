@@ -47,12 +47,8 @@ struct EchoCardView: View {
         VStack(alignment: .leading, spacing: 0) {
             cardHeader
 
-            if isOpenCard {
-                openBadge
-                    .padding(.top, 10)
-            }
-
-            Spacer(minLength: 12)
+            Spacer(minLength: 4)
+                .frame(maxHeight: 18)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(content.title)
@@ -71,16 +67,7 @@ struct EchoCardView: View {
                 }
             }
 
-            if !content.echoLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(content.echoLine)
-                    .font(.caption)
-                    .foregroundStyle(EchoStyle.mutedInk)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 8)
-            }
-
-            Spacer(minLength: 12)
+            Spacer(minLength: 22)
 
             cardFooter
         }
