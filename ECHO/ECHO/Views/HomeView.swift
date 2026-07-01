@@ -114,6 +114,8 @@ struct HomeView: View {
                     Image(systemName: "person.circle")
                         .font(.title3)
                 }
+                .accessibilityLabel("Developer actions")
+                .accessibilityHint("Opens sample data and link rebuild actions for testing.")
 #else
                 Image(systemName: "person.circle")
                     .font(.title3)
@@ -128,19 +130,24 @@ struct HomeView: View {
 
     private var captureButton: some View {
         ScribbleEchoButton(state: .idle, size: 190) {
+            captureInitialMode = .speech
+            captureAutoStartSpeech = false
             isShowingCapture = true
         }
+        .accessibilityHint("Double tap to open Echo capture with voice recording selected.")
     }
 
     private var inputOptions: some View {
         HStack(spacing: 78) {
-            inputOption("Text", systemImage: "textformat")
-            inputOption("Photo", systemImage: "camera")
+            inputOption("Text", systemImage: "textformat", mode: .text)
+            inputOption("Photo", systemImage: "camera", mode: .camera)
         }
     }
 
-    private func inputOption(_ title: String, systemImage: String) -> some View {
+    private func inputOption(_ title: String, systemImage: String, mode: CaptureInputMode) -> some View {
         Button {
+            captureInitialMode = mode
+            captureAutoStartSpeech = false
             isShowingCapture = true
         } label: {
             VStack(spacing: 10) {
@@ -163,6 +170,8 @@ struct HomeView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(mode == .camera ? "Scan a cover" : "Type an Echo")
+        .accessibilityHint(mode == .camera ? "Double tap to open camera capture." : "Double tap to open text capture.")
     }
 
     private var captureCaption: some View {

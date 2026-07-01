@@ -142,7 +142,7 @@ struct LocalEchoRecommendationProvider: EchoRecommendationProviding {
 
 private extension EchoMemory {
     var recommendationKeywords: Set<String> {
-        Set((title + " " + memory + " " + echoLine)
+        Set((title + " " + memory)
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .map { $0.recommendationToken }
             .compactMap { token in

@@ -33,6 +33,10 @@ struct EchoCardView: View {
                     .transition(.scale(scale: 1.22).combined(with: .opacity))
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityHint("Opens the Echo detail.")
         .animation(.spring(response: 0.24, dampingFraction: 0.62), value: content.unlockedAt != nil)
         .onChange(of: content.unlockedAt) { oldValue, newValue in
             if oldValue == nil, newValue != nil {
@@ -71,14 +75,6 @@ struct EchoCardView: View {
                 }
             }
 
-            if !content.echoLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(content.echoLine)
-                    .font(.caption)
-                    .foregroundStyle(EchoStyle.mutedInk)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 8)
-            }
 
             Spacer(minLength: 12)
 
@@ -188,6 +184,23 @@ struct EchoCardView: View {
         EchoStyle.emotionColor(content.emotion)
     }
 
+    private var accessibilityLabel: String {
+        var parts = [content.title, content.category.title, content.discoveryStatus.badgeTitle]
+        if let creator = content.creator, !creator.isEmpty {
+            parts.insert(creator, at: 1)
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private var accessibilityValue: String {
+        let year = content.year?.trimmingCharacters(in: .whitespacesAndNewlines)
+        var parts = [content.emotion.title]
+        if let year, !year.isEmpty {
+            parts.append(year)
+        }
+        return parts.joined(separator: ". ")
+    }
+
     private var stableStampRotation: Double {
         Double((stableStampSeed % 9) - 4)
     }
@@ -271,7 +284,6 @@ struct EchoCardView: View {
             category: .film,
             emotion: .nostalgia,
             memory: "I watched it every winter with my brother.",
-            echoLine: "The Lord of the Rings stayed with me as a winter ritual with my brother.",
             unlockedAt: Date()
         )
     )

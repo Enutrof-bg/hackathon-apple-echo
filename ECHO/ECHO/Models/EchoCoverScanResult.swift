@@ -20,7 +20,6 @@ struct EchoCoverScanResult {
             category: category,
             emotion: .curiosity,
             memory: "",
-            echoLine: "",
             year: resolvedYear,
             originalTranscript: visibleText.nilIfBlank,
             discoveryStatus: .notDiscovered

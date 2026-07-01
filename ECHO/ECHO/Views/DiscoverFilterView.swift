@@ -60,6 +60,7 @@ struct DiscoverFilterView: View {
             }
             .pickerStyle(.menu)
             .tint(EchoStyle.ink)
+            .accessibilityHint("Choose the emotion used to tune discovery recommendations.")
 
             filterSlider(
                 title: "Emotional intensity",
@@ -79,6 +80,7 @@ struct DiscoverFilterView: View {
             }
             .pickerStyle(.menu)
             .tint(EchoStyle.ink)
+            .accessibilityHint("Choose the cultural category used to tune discovery recommendations.")
 
             filterSlider(
                 title: "Category focus",
@@ -125,6 +127,9 @@ struct DiscoverFilterView: View {
             .padding(.vertical, 12)
             .overlay(alignment: .top) { rule(opacity: 0.5) }
             .overlay(alignment: .bottom) { rule(opacity: 0.5) }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Current recommendation direction")
+            .accessibilityValue("\(selectedEmotion.title), \(selectedCategory.title), \(comfortLevel < 0.5 ? "comfort" : "surprise")")
         }
     }
 
@@ -155,6 +160,9 @@ struct DiscoverFilterView: View {
 
             Slider(value: value, in: 0...1)
                 .tint(EchoStyle.ink)
+                .accessibilityLabel(title)
+                .accessibilityValue("\(Int(value.wrappedValue * 100)) percent")
+                .accessibilityHint("Adjust between \(leftLabel.lowercased()) and \(rightLabel.lowercased()).")
 
             HStack {
                 Text(leftLabel)

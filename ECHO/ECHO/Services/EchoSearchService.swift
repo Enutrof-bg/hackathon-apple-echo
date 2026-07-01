@@ -28,8 +28,7 @@ struct EchoSearchService {
         let status = memory.discoveryStatus.searchTerms.joined(separator: " ").searchNormalized
         let year = memory.year?.searchNormalized ?? ""
         let memoryText = memory.memory.searchNormalized
-        let echoLine = memory.echoLine.searchNormalized
-        let fullText = [title, creator, category, emotion, status, year, memoryText, echoLine]
+        let fullText = [title, creator, category, emotion, status, year, memoryText]
             .filter { !$0.isEmpty }
             .joined(separator: " ")
 
@@ -77,9 +76,6 @@ struct EchoSearchService {
             }
             if memoryText.contains(term) {
                 score += 4
-            }
-            if echoLine.contains(term) {
-                score += 3
             }
             if fullText.contains(term) {
                 score += 1

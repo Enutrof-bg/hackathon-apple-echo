@@ -50,6 +50,7 @@ struct GalleryView: View {
                                         EchoCardView(memory: memory)
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityHint("Double tap to open this Echo detail.")
                                 }
                             }
                         }
@@ -65,6 +66,7 @@ struct GalleryView: View {
                         Image(systemName: "archivebox")
                     }
                     .accessibilityLabel("Recently Deleted")
+                    .accessibilityHint("Double tap to review, restore, or erase deleted Echoes.")
                 }
             }
         }
@@ -112,6 +114,9 @@ struct GalleryView: View {
                     Capsule()
                         .stroke(EchoStyle.border.opacity(0.42), lineWidth: 1)
                 )
+                .accessibilityLabel("Show \(filter.title.lowercased()) cards")
+                .accessibilityValue(selectedFilter == filter ? "Selected" : "Not selected")
+                .accessibilityHint("Double tap to filter the gallery.")
             }
         }
     }

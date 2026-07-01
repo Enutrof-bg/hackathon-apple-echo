@@ -7,9 +7,10 @@ protocol EchoCardPresentable {
     var category: EchoCategory { get }
     var emotion: EchoEmotion { get }
     var memory: String { get }
-    var echoLine: String { get }
     var year: String? { get }
     var originalTranscript: String? { get }
+    var audioFileName: String? { get }
+    var audioDuration: TimeInterval? { get }
     var discoveryStatus: EchoDiscoveryStatus { get }
     var unlockedAt: Date? { get }
 }
@@ -21,9 +22,10 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
     var category: EchoCategory
     var emotion: EchoEmotion
     var memory: String
-    var echoLine: String
     var year: String?
     var originalTranscript: String?
+    var audioFileName: String?
+    var audioDuration: TimeInterval?
     var discoveryStatus: EchoDiscoveryStatus
     var unlockedAt: Date?
 
@@ -34,9 +36,10 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         category: EchoCategory,
         emotion: EchoEmotion,
         memory: String,
-        echoLine: String,
         year: String? = nil,
         originalTranscript: String? = nil,
+        audioFileName: String? = nil,
+        audioDuration: TimeInterval? = nil,
         discoveryStatus: EchoDiscoveryStatus = .discovered,
         unlockedAt: Date? = nil
     ) {
@@ -46,9 +49,10 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         self.category = category
         self.emotion = emotion
         self.memory = memory
-        self.echoLine = echoLine
         self.year = year
         self.originalTranscript = originalTranscript
+        self.audioFileName = audioFileName
+        self.audioDuration = audioDuration
         self.discoveryStatus = discoveryStatus
         self.unlockedAt = unlockedAt
     }
@@ -60,9 +64,10 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         self.category = memory.category
         self.emotion = memory.emotion
         self.memory = memory.memory
-        self.echoLine = memory.echoLine
         self.year = memory.year
         self.originalTranscript = memory.originalTranscript
+        self.audioFileName = memory.audioFileName
+        self.audioDuration = memory.audioDuration
         self.discoveryStatus = memory.discoveryStatus
         self.unlockedAt = memory.unlockedAt
     }
@@ -75,12 +80,18 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
             category: category,
             emotion: emotion,
             memory: memory.trimmedFallback("A memory I want to keep."),
-            echoLine: echoLine.trimmedFallback("A short summary can be added after the memory is clearer."),
             year: year?.nilIfBlank,
             originalTranscript: originalTranscript?.nilIfBlank,
+            audioFileName: audioFileName?.nilIfBlank,
+            audioDuration: sanitizedAudioDuration,
             discoveryStatus: discoveryStatus,
             unlockedAt: unlockedAt
         )
+    }
+
+    private var sanitizedAudioDuration: TimeInterval? {
+        guard let audioDuration, audioDuration.isFinite, audioDuration > 0 else { return nil }
+        return audioDuration
     }
 
     func makePersistedMemory(createdAt: Date = Date()) -> EchoMemory {
@@ -91,9 +102,10 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
             category: draft.category,
             emotion: draft.emotion,
             memory: draft.memory,
-            echoLine: draft.echoLine,
             year: draft.year,
             originalTranscript: draft.originalTranscript,
+            audioFileName: draft.audioFileName,
+            audioDuration: draft.audioDuration,
             discoveryStatus: draft.discoveryStatus,
             unlockedAt: draft.unlockedAt,
             createdAt: createdAt

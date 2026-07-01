@@ -6,7 +6,6 @@ struct EchoFormView: View {
     @Binding var category: EchoCategory
     @Binding var emotion: EchoEmotion
     @Binding var memoryText: String
-    @Binding var echoLine: String
     @Binding var year: String
     @Binding var discoveryStatus: EchoDiscoveryStatus
 
@@ -16,13 +15,19 @@ struct EchoFormView: View {
 
             TextField("Title", text: $title)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Title")
+                .accessibilityHint("Enter the name of the work, book, film, album, or cultural object.")
 
             TextField("Creator", text: $creator)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Creator")
+                .accessibilityHint("Enter the author, artist, director, or creator when known.")
 
             TextField("Year", text: $year)
                 .keyboardType(.numberPad)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Year")
+                .accessibilityHint("Enter the release year when known.")
 
             HStack(spacing: 12) {
                 Picker("Category", selection: $category) {
@@ -32,6 +37,7 @@ struct EchoFormView: View {
                 }
                 .pickerStyle(.menu)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityHint("Choose the type of cultural work.")
 
                 Picker("Emotion", selection: $emotion) {
                     ForEach(EchoEmotion.allCases) { emotion in
@@ -40,6 +46,7 @@ struct EchoFormView: View {
                 }
                 .pickerStyle(.menu)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityHint("Choose the emotion attached to this Echo.")
             }
             .padding(12)
             .echoGlassPanel(tint: EchoStyle.accent.opacity(0.08))
@@ -50,6 +57,7 @@ struct EchoFormView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityHint("Choose whether this work has already been discovered or is still waiting to be discovered.")
 
             VStack(alignment: .leading, spacing: 8) {
                 sectionLabel("Memory")
@@ -57,17 +65,12 @@ struct EchoFormView: View {
                 TextEditor(text: $memoryText)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 120)
+                    .accessibilityLabel("Memory")
+                    .accessibilityHint("Write the personal memory, feeling, or context attached to this work.")
                     .padding(8)
                     .echoGlassPanel(tint: EchoStyle.accent.opacity(0.06))
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                sectionLabel("Summary")
-
-                TextField("Summary", text: $echoLine, axis: .vertical)
-                    .lineLimit(2...4)
-                    .textFieldStyle(.roundedBorder)
-            }
         }
         .padding(16)
         .echoGlassPanel(tint: EchoStyle.accent.opacity(0.08))

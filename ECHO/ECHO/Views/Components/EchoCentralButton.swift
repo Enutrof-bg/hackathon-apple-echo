@@ -61,7 +61,9 @@ struct EchoCentralButton: View {
                     handleTap()
                 }
         )
-        .accessibilityLabel("Créer un souvenir")
+        .accessibilityLabel(isRecording ? "Stop recording an Echo" : "Start recording an Echo")
+        .accessibilityValue(isRecording ? "Recording in progress" : "Ready to record")
+        .accessibilityHint(isRecording ? "Double tap to stop voice capture." : "Double tap to start capturing a voice memory.")
         .accessibilityAddTraits(.isButton)
         .sensoryFeedback(.selection, trigger: rippleTrigger)
         .onAppear(perform: startScribbleAnimation)

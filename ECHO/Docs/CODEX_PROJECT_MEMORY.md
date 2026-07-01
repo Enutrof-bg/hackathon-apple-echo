@@ -67,6 +67,7 @@ Codex should prioritize technical stability and plug-and-play integration points
 - `EchoMemoryLinkService` stores local heuristic links immediately when a new Echo is saved; FoundationModels is used only for non-blocking enriched suggestions/fallback display.
 - Debug builds expose `Load Sample Echoes`, which inserts fixed placeholders and adds generated sample Echoes through FoundationModels when Apple Intelligence is available.
 - `SpeechTranscriptionService` uses `SpeechAnalyzer` + `DictationTranscriber`.
+- Spoken Echoes can persist the original voice as a local `.m4a` recording referenced by `audioFileName` and `audioDuration`.
 - Microphone capture uses `CaptureInputSequenceProvider` managed by `SpeechCaptureSessionController`, not `AVAudioEngine.installTap`.
 - Speech supports explicit `Speak` and `Type` modes.
 - Recognition locale is selected from iOS preferred languages through `SpeechRecognitionLocaleProvider`.
@@ -114,9 +115,10 @@ final class EchoMemory {
     var category: EchoCategory
     var emotion: EchoEmotion
     var memory: String
-    var echoLine: String
     var year: String?
     var originalTranscript: String?
+    var audioFileName: String?
+    var audioDuration: TimeInterval?
     var createdAt: Date
     var deletedAt: Date?
 }
@@ -237,6 +239,7 @@ Done.
 Current architecture:
 
 - `SpeechTranscriptionService`
+- `EchoAudioRecordingService`
 - `SpeechCaptureSessionController`
 - `SpeechRecognitionLocaleProvider`
 - `SpeechRecognitionContextProvider`
@@ -246,6 +249,8 @@ Current Apple APIs:
 - `SpeechAnalyzer`
 - `DictationTranscriber`
 - `CaptureInputSequenceProvider`
+- `AVCaptureAudioDataOutput`
+- `AVAssetWriter`
 - `AnalysisContext.contextualStrings`
 
 Do not revert to `AVAudioEngine.installTap`; it was removed because it is deprecated in iOS 27.
@@ -429,22 +434,18 @@ Current behavior:
 - Persistence alerts use generic local-storage messages instead of raw system error descriptions.
 - Manual review/edit remains available after fallback generation.
 
-### Summary Field Repositioning
+### Summary Field Removal
 
 Done.
 
-The persisted property remains `echoLine` to avoid migration churn, but the product meaning is now `Summary`.
+Echo no longer keeps a separate summary field. The former persisted `echoLine`/`Summary` concept has been removed from the model, draft contract, FoundationModels schema, local fallback, forms, cards, detail view, widgets, search, and link prompts.
 
 Rules:
 
-- do not generate poetic taglines;
-- generate one clear factual/personal sentence grounded only in the transcript;
-- no metaphor, no invented meaning;
-- UI labels use `Summary` in form and detail views;
-- FoundationModels guides now ask for a grounded summary;
-- local fallback summarizes the transcript directly.
-
-Existing older cards may still contain poetic historical summaries until edited or regenerated.
+- do not generate a summary or tagline;
+- use `memory` as the single user-facing remembered text;
+- do not keep a hidden summary in app state or persistence;
+- cards and detail views should prioritize title, creator, category, emotion, memory, year, and discovery status.
 
 ### AI Anti-Hallucination Recalibration
 

@@ -9,7 +9,7 @@ struct EchoWidgetMemorySnapshot: Equatable {
     let categoryTitle: String
     let categorySymbolName: String
     let emotionTitle: String
-    let summary: String
+    let memoryText: String
     let discoveryStatus: EchoDiscoveryStatus
 }
 
@@ -279,7 +279,7 @@ struct EchoWidgetMemoryContent: View {
                     .lineLimit(1)
             }
 
-            Text(memory.summary)
+            Text(memory.memoryText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
@@ -295,7 +295,7 @@ extension EchoWidgetMemorySnapshot {
             categoryTitle: memory.category.title,
             categorySymbolName: memory.category.symbolName,
             emotionTitle: memory.emotion.title,
-            summary: memory.echoLine.trimmedFallback(memory.memory),
+            memoryText: memory.memory,
             discoveryStatus: memory.discoveryStatus
         )
     }
@@ -307,7 +307,7 @@ extension EchoWidgetMemorySnapshot {
             categoryTitle: draft.category.title,
             categorySymbolName: draft.category.symbolName,
             emotionTitle: draft.emotion.title,
-            summary: draft.echoLine.trimmedFallback(draft.memory),
+            memoryText: draft.memory,
             discoveryStatus: draft.discoveryStatus
         )
     }
@@ -318,7 +318,7 @@ extension EchoWidgetMemorySnapshot {
         categoryTitle: "Book",
         categorySymbolName: "book.closed",
         emotionTitle: "Wonder",
-        summary: "A memory about feeling lost inside a labyrinth of pages.",
+        memoryText: "A memory about feeling lost inside a labyrinth of pages.",
         discoveryStatus: .discovered
     )
 
@@ -328,7 +328,7 @@ extension EchoWidgetMemorySnapshot {
         categoryTitle: "Book",
         categorySymbolName: "book.closed",
         emotionTitle: "Curiosity",
-        summary: "A book to discover for imagined places, memory, and poetic fragments.",
+        memoryText: "A book to discover for imagined places, memory, and poetic fragments.",
         discoveryStatus: .notDiscovered
     )
 }

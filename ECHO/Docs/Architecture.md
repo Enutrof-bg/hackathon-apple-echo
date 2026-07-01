@@ -97,9 +97,10 @@ final class EchoMemory {
     var category: EchoCategory
     var emotion: EchoEmotion
     var memory: String
-    var echoLine: String
     var year: String?
     var originalTranscript: String?
+    var audioFileName: String?
+    var audioDuration: TimeInterval?
     var createdAt: Date
     var deletedAt: Date?
 }
@@ -115,9 +116,10 @@ Design-facing fields:
 | `category.symbolName` | SF Symbol for the category | Current icon source |
 | `emotion.title` | Dominant feeling | Can drive color, tone, grouping, or filter design |
 | `memory` | Personal memory text | Main body content |
-| `echoLine` | Short emotional line | Current card quote/tagline |
 | `year` | Optional year | Metadata only |
 | `originalTranscript` | Raw captured input | Internal/debug/reference; not required in primary UI |
+| `audioFileName` | Local voice recording file name | Optional; present only for spoken Echoes |
+| `audioDuration` | Recorded voice duration in seconds | Optional playback metadata |
 | `createdAt` | Save date | Collection/detail metadata |
 | `deletedAt` | Soft-delete date | Recently Deleted state and retention |
 
@@ -179,7 +181,8 @@ Manual text entry is not an edge case. It is a first-class fallback and must rem
 |---|---|
 | `Services/AIExtractionService.swift` | Converts transcript text into `EchoMemoryDraft`; tries FoundationModels first, falls back to local heuristic extraction |
 | `Services/EchoMemoryPersistenceService.swift` | Central insert, update, move-to-trash, restore, permanent-delete, and purge operations |
-| `Services/SpeechTranscriptionService.swift` | Main speech state machine, permission request, analyzer setup, transcript updates, errors |
+| `Services/SpeechTranscriptionService.swift` | Main speech state machine, permission request, analyzer setup, transcript updates, audio attachment handoff, errors |
+| `Services/EchoAudioRecordingService.swift` | Writes spoken capture audio to local `.m4a` files and resolves/deletes recording files |
 | `Services/SpeechCaptureSessionController.swift` | Actor that starts/stops the underlying `AVCaptureSession` safely |
 | `Services/SpeechRecognitionLocaleProvider.swift` | Chooses a supported dictation locale from preferred languages and fallbacks |
 | `Services/SpeechRecognitionContextProvider.swift` | Provides cultural terms to bias recognition of names and titles |
@@ -194,8 +197,8 @@ Saved Echoes are never directly removed from the main collection by the detail d
 | Edit Echo | `update(_:with:in:)` | Sanitizes draft, updates fields, saves context |
 | Move to trash | `moveToTrash(_:in:)` | Sets `deletedAt`, saves context |
 | Undo/restore | `restore(_:in:)` | Clears `deletedAt`, saves context |
-| Delete permanently | `deletePermanently(_:in:)` | Deletes object from SwiftData, saves context |
-| Purge expired trash | `purgeExpiredDeletedMemories(_:in:)` | Deletes memories soft-deleted for 30+ days |
+| Delete permanently | `deletePermanently(_:in:)` | Deletes object from SwiftData, saves context, then deletes the local voice file |
+| Purge expired trash | `purgeExpiredDeletedMemories(_:in:)` | Deletes memories soft-deleted for 30+ days and removes their local voice files |
 
 `HomeView` filters active memories with `deletedAt == nil`. `RecentlyDeletedView` receives memories where `deletedAt != nil`.
 

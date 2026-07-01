@@ -232,7 +232,6 @@ struct EchoMemoryLinkService {
             Emotion: \(memory.emotion.title)
             Year: \(memory.year ?? "Not provided")
             Memory: \(memory.memory)
-            Summary: \(memory.echoLine)
             """
         }.joined(separator: "\n\n")
 
@@ -256,7 +255,6 @@ struct EchoMemoryLinkService {
             Emotion: \(source.emotion.title)
             Year: \(source.year ?? "Not provided")
             Memory: \(source.memory)
-            Echo line: \(source.echoLine)
 
             Candidate Echoes:
             \(indexedCandidates)
@@ -511,7 +509,7 @@ private enum GeneratedEchoLinkConfidence {
 
 private extension EchoMemory {
     var linkKeywords: Set<String> {
-        Set((title + " " + memory + " " + echoLine)
+        Set((title + " " + memory)
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .map { $0.cleanLinkToken }
             .compactMap { token in

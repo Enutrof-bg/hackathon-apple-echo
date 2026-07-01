@@ -55,7 +55,6 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 category: .film,
                 emotion: .melancholy,
                 memory: "A film to discover for its quiet, haunted journey through desire, faith, and strange landscapes.",
-                echoLine: "Stalker is suggested as a quiet film to explore for mystery, faith, and emotional solitude.",
                 year: "1979",
                 originalTranscript: "Hardcoded Discover suggestion: Stalker by Andrei Tarkovsky.",
                 discoveryStatus: .notDiscovered
@@ -70,7 +69,6 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 category: .book,
                 emotion: .curiosity,
                 memory: "A book to discover for imagined cities that feel like maps of memory, language, and longing.",
-                echoLine: "Invisible Cities is suggested for imagined places, memory, language, and poetic urban fragments.",
                 year: "1972",
                 originalTranscript: "Hardcoded Discover suggestion: Invisible Cities by Italo Calvino.",
                 discoveryStatus: .notDiscovered
@@ -85,7 +83,6 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 category: .book,
                 emotion: .curiosity,
                 memory: "A book to discover for political imagination, loneliness between worlds, and the cost of belonging nowhere fully.",
-                echoLine: "The Dispossessed is suggested for political imagination, exile, belonging, and difficult hope.",
                 year: "1974",
                 originalTranscript: "Hardcoded Discover suggestion: The Dispossessed by Ursula K. Le Guin.",
                 discoveryStatus: .notDiscovered
@@ -100,7 +97,6 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 category: .music,
                 emotion: .calm,
                 memory: "An album to discover for spacious quiet, blue-hour focus, and music that leaves room to breathe.",
-                echoLine: "Kind of Blue is suggested for calm focus, spacious sound, and blue-hour atmosphere.",
                 year: "1959",
                 originalTranscript: "Hardcoded Discover suggestion: Kind of Blue by Miles Davis.",
                 discoveryStatus: .notDiscovered
@@ -115,7 +111,6 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 category: .book,
                 emotion: .wonder,
                 memory: "A story to discover for labyrinths, time, choice, and the feeling that reality has hidden corridors.",
-                echoLine: "The Garden of Forking Paths is suggested for labyrinths, time, choice, and intellectual wonder.",
                 year: "1941",
                 originalTranscript: "Hardcoded Discover suggestion: The Garden of Forking Paths by Jorge Luis Borges.",
                 discoveryStatus: .notDiscovered
@@ -130,7 +125,6 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 category: .film,
                 emotion: .melancholy,
                 memory: "A film to discover for distance, family, desert light, and the ache of trying to return.",
-                echoLine: "Paris, Texas is suggested for distance, family, desert light, and fragile repair.",
                 year: "1984",
                 originalTranscript: "Hardcoded Discover suggestion: Paris, Texas by Wim Wenders.",
                 discoveryStatus: .notDiscovered

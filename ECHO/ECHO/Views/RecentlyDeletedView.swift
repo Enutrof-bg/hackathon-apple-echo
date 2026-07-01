@@ -79,6 +79,8 @@ struct RecentlyDeletedView: View {
                     archiveActionLabel("Restore", systemImage: "arrow.uturn.backward")
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Restore \(memory.title)")
+                .accessibilityHint("Double tap to move this Echo back to your active archive.")
 
                 Rectangle()
                     .fill(EchoStyle.border.opacity(0.42))
@@ -90,6 +92,8 @@ struct RecentlyDeletedView: View {
                     archiveActionLabel("Erase", systemImage: "xmark")
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Erase \(memory.title) permanently")
+                .accessibilityHint("Double tap to permanently delete this Echo. This cannot be undone.")
             }
             .overlay(
                 Rectangle()

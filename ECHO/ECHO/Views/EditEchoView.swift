@@ -13,7 +13,6 @@ struct EditEchoView: View {
     @State private var category: EchoCategory
     @State private var emotion: EchoEmotion
     @State private var memoryText: String
-    @State private var echoLine: String
     @State private var year: String
     @State private var discoveryStatus: EchoDiscoveryStatus
     @State private var isSaving = false
@@ -30,7 +29,6 @@ struct EditEchoView: View {
         _category = State(initialValue: memory.category)
         _emotion = State(initialValue: memory.emotion)
         _memoryText = State(initialValue: memory.memory)
-        _echoLine = State(initialValue: memory.echoLine)
         _year = State(initialValue: memory.year ?? "")
         _discoveryStatus = State(initialValue: memory.discoveryStatus)
     }
@@ -44,7 +42,6 @@ struct EditEchoView: View {
                     category: $category,
                     emotion: $emotion,
                     memoryText: $memoryText,
-                    echoLine: $echoLine,
                     year: $year,
                     discoveryStatus: $discoveryStatus
                 )
@@ -58,6 +55,7 @@ struct EditEchoView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .accessibilityHint("Double tap to discard changes and return to the previous screen.")
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
@@ -67,6 +65,8 @@ struct EditEchoView: View {
                         }
                     }
                     .disabled(isSaving)
+                    .accessibilityLabel(isSaving ? "Saving Echo" : "Save Echo")
+                    .accessibilityHint("Double tap to save your changes to this Echo.")
                 }
             }
             .alert(item: $saveError) { error in
@@ -101,9 +101,10 @@ struct EditEchoView: View {
             category: category,
             emotion: emotion,
             memory: memoryText,
-            echoLine: echoLine,
             year: year.nilIfBlank,
             originalTranscript: memory.originalTranscript,
+            audioFileName: memory.audioFileName,
+            audioDuration: memory.audioDuration,
             discoveryStatus: discoveryStatus
         )
     }

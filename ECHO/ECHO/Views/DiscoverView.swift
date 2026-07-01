@@ -64,6 +64,7 @@ struct DiscoverView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Tune Discover filters")
+                .accessibilityHint("Double tap to adjust what appears in the discovery section.")
             }
 
             Rectangle()
@@ -84,6 +85,7 @@ struct DiscoverView: View {
                             EchoCardView(memory: memory)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityHint("Opens this saved work from your discovery queue.")
                     }
                 }
             }
@@ -103,6 +105,9 @@ struct DiscoverView: View {
                             suggestionCard(suggestion)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Add suggestion, \(suggestion.draft.title)")
+                        .accessibilityValue(suggestion.reason)
+                        .accessibilityHint("Double tap to review and save this suggested Echo.")
                     }
                 }
             }
@@ -121,6 +126,7 @@ struct DiscoverView: View {
                             EchoCardView(memory: memory)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityHint("Opens this older Echo to revisit the memory.")
                     }
                 }
             }

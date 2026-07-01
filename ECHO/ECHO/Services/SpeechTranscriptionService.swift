@@ -4,6 +4,11 @@ import Foundation
 import Observation
 import Speech
 
+struct SpeechCaptureResult {
+    let transcript: String
+    let audioAttachment: EchoAudioAttachment?
+}
+
 enum SpeechCaptureState: Equatable {
     case idle
     case requestingPermission
@@ -43,11 +48,14 @@ final class SpeechTranscriptionService {
     private(set) var recognitionLanguageName: String
 
     private let captureSessionController = SpeechCaptureSessionController()
+    private let audioRecordingService = EchoAudioRecordingService()
     private var analyzer: SpeechAnalyzer?
     private var transcriber: DictationTranscriber?
     private var captureInputProvider: CaptureInputSequenceProvider?
     private var analysisTask: Task<Void, Never>?
     private var resultTask: Task<Void, Never>?
+    private var finishTask: Task<Void, Never>?
+    private var recordedAudioAttachment: EchoAudioAttachment?
     private var didStopIntentionally = false
     private var finalizedTranscriptParts: [String] = []
     private var volatileTranscriptPart = ""
@@ -87,29 +95,50 @@ final class SpeechTranscriptionService {
         didStopIntentionally = true
         state = .stopping
 
-        Task {
-            await finishCurrentSession()
+        if finishTask == nil {
+            finishTask = Task { [weak self] in
+                await self?.finishCurrentSession()
+            }
         }
     }
 
     func finishTranscribingAndReturnTranscript() async -> String {
-        guard captureInputProvider != nil || analyzer != nil else { return transcript }
+        await finishTranscribingAndReturnCapture().transcript
+    }
+
+    func finishTranscribingAndReturnCapture() async -> SpeechCaptureResult {
+        if let finishTask {
+            await finishTask.value
+            return SpeechCaptureResult(transcript: transcript, audioAttachment: takeRecordedAudioAttachment())
+        }
+
+        guard captureInputProvider != nil || analyzer != nil else {
+            return SpeechCaptureResult(transcript: transcript, audioAttachment: takeRecordedAudioAttachment())
+        }
 
         didStopIntentionally = true
         state = .stopping
         await finishCurrentSession()
         try? await Task.sleep(for: .milliseconds(250))
-        return transcript
+        return SpeechCaptureResult(transcript: transcript, audioAttachment: takeRecordedAudioAttachment())
     }
 
     func resetTranscript() {
         transcript = ""
         finalizedTranscriptParts = []
         volatileTranscriptPart = ""
+        EchoAudioFileService.deleteRecording(fileName: recordedAudioAttachment?.fileName)
+        recordedAudioAttachment = nil
     }
 
     func updateContextualStrings(_ strings: [String]) {
         contextualStrings = SpeechRecognitionContextProvider.normalizedContextualStrings(from: strings)
+    }
+
+    private func takeRecordedAudioAttachment() -> EchoAudioAttachment? {
+        let attachment = recordedAudioAttachment
+        recordedAudioAttachment = nil
+        return attachment
     }
 
     private func configureAutomaticDictationLocale() async throws {
@@ -145,6 +174,9 @@ final class SpeechTranscriptionService {
 
     private func startAnalyzerSession() async throws {
         await cancelCurrentSession()
+        EchoAudioFileService.deleteRecording(fileName: recordedAudioAttachment?.fileName)
+        recordedAudioAttachment = nil
+        finishTask = nil
         didStopIntentionally = false
         resetTranscriptBuffers(keepingVisibleTranscript: !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
@@ -169,6 +201,8 @@ final class SpeechTranscriptionService {
             priority: .userInitiated
         )
 
+        try audioRecordingService.prepareRecording()
+
         self.analyzer = analyzer
         self.transcriber = transcriber
         self.captureInputProvider = captureInputProvider
@@ -177,6 +211,7 @@ final class SpeechTranscriptionService {
         startResultTask(for: transcriber)
         startAnalysisTask(with: analyzer, inputSequence: captureInputProvider.analyzerInputs)
         await captureSessionController.startRunning()
+        audioRecordingService.startRecording()
     }
 
     private func startResultTask(for transcriber: DictationTranscriber) {
@@ -257,9 +292,12 @@ final class SpeechTranscriptionService {
     }
 
     private func finishCurrentSession() async {
+        let audioAttachment = await audioRecordingService.stopRecording()
+        recordedAudioAttachment = audioAttachment
         await captureSessionController.stopRunning()
         captureInputProvider = nil
         transcriber = nil
+        finishTask = nil
 
         guard let analyzer else {
             state = .ready
@@ -279,8 +317,10 @@ final class SpeechTranscriptionService {
     }
 
     private func cancelCurrentSession() async {
+        await audioRecordingService.cancelRecordingAndDeleteFile()
         await captureSessionController.stopRunning()
         captureInputProvider = nil
+        finishTask = nil
         resultTask?.cancel()
         analysisTask?.cancel()
         resultTask = nil

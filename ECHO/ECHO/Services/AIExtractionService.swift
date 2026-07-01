@@ -78,7 +78,6 @@ struct AIExtractionService {
         - Choose one category and one dominant emotion.
         - Set discoveryStatus to notDiscovered if the user has not experienced it yet and is expressing a wish, plan, recommendation, or intention.
         - Preserve the user's memory; do not add events, people, or details.
-        - Summary: one clear sentence. Preserve the emotional image or tension, not just the first clause.
         - Set confidence to low for vague, noisy, random, or incomplete input.
         \(titleCandidatePrompt(titleCandidate))
 
@@ -131,7 +130,6 @@ struct AIExtractionService {
             category: category,
             emotion: emotion,
             memory: memory,
-            echoLine: makeSummary(from: cleanedTranscript, discoveryStatus: discoveryStatus),
             year: extractYear(from: cleanedTranscript),
             originalTranscript: cleanedTranscript.isEmpty ? nil : cleanedTranscript,
             discoveryStatus: discoveryStatus
@@ -199,20 +197,6 @@ struct AIExtractionService {
         return notDiscoveredPatterns.contains { lowercased.contains($0) } ? .notDiscovered : .discovered
     }
 
-    private func makeSummary(from transcript: String, discoveryStatus: EchoDiscoveryStatus) -> String {
-        let cleanedTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanedTranscript.isEmpty else {
-            return "A short summary can be added after the memory is clearer."
-        }
-
-        let prefix = discoveryStatus == .notDiscovered ? "I want to remember to explore " : "I remember "
-        let maxBodyLength = 120
-        let body = String(cleanedTranscript.prefix(maxBodyLength))
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: ".,!?;:"))
-
-        return prefix + body + "."
-    }
 }
 
 struct AIExtractionResult {
@@ -246,8 +230,6 @@ private struct GeneratedEchoDraft {
     @Guide(description: "Ignored by the app. The original transcript is preserved as the memory.")
     var memory: String
 
-    @Guide(description: "One clear summary sentence grounded only in the transcript. Preserve the emotional image or tension, not just the opening clause.")
-    var echoLine: String
 
     @Guide(description: "Explicit four-digit year only. Nil if absent or uncertain.")
     var year: String?
@@ -260,7 +242,6 @@ private struct GeneratedEchoDraft {
         let cleanedTitle = title.cleanGeneratedOptionalField
         let cleanedCreator = creator.cleanGeneratedOptionalField
         let cleanedYear = year.validGeneratedYear
-        let cleanedEchoLine = echoLine.cleanGeneratedRequiredField(fallback: originalMemory.shortGeneratedSummary)
         let resolvedTitle = titleCandidate?.title ?? (confidence.allowsSpecificFacts ? cleanedTitle : nil) ?? "Untitled Echo"
         let resolvedCreator = titleCandidate?.creator ?? (confidence.allowsSpecificFacts ? cleanedCreator : nil)
         let resolvedCategory = titleCandidate?.category ?? category.echoCategory
@@ -272,7 +253,6 @@ private struct GeneratedEchoDraft {
             category: resolvedCategory,
             emotion: emotion.echoEmotion,
             memory: originalMemory,
-            echoLine: cleanedEchoLine,
             year: confidence.allowsSpecificFacts ? cleanedYear : nil,
             originalTranscript: originalTranscript,
             discoveryStatus: resolvedDiscoveryStatus
@@ -401,21 +381,6 @@ private extension String {
         return trimmed
     }
 
-    func cleanGeneratedRequiredField(fallback: String) -> String {
-        cleanGeneratedOptionalField ?? fallback
-    }
-
-    var shortGeneratedSummary: String {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            return "A short summary can be added after the memory is clearer."
-        }
-
-        let body = String(trimmed.prefix(140))
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: ".,!?;:"))
-        return body + "."
-    }
 
     var normalizedGeneratedValue: String {
         folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)

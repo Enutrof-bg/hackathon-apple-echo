@@ -26,9 +26,7 @@ struct ReadSearchResultsIntent: AppIntent {
         }
 
         let resultText = results.enumerated().map { index, memory in
-            let summary = memory.echoLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            let spokenSummary = summary.isEmpty ? memory.memory : summary
-            return "\(index + 1). \(memory.title). \(spokenSummary)"
+            "\(index + 1). \(memory.title). \(memory.memory)"
         }.joined(separator: " ")
 
         return .result(dialog: "Top Echo results for \(cleanedQuery): \(resultText)")

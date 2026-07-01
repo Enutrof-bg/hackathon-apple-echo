@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 #if os(iOS)
 import AudioToolbox
+import AVFAudio
 import UIKit
 #endif
 
@@ -25,10 +26,12 @@ struct EchoDetailView: View {
     @State private var category: EchoCategory
     @State private var emotion: EchoEmotion
     @State private var memoryText: String
-    @State private var echoLine: String
     @State private var year: String
     @State private var discoveryStatus: EchoDiscoveryStatus
     @State private var deleteError: EchoUserFacingError?
+    @State private var audioPlaybackError: String?
+    @State private var audioPlayer: AVAudioPlayer?
+    @State private var isAudioPlaying = false
     @State private var isShowingUndoBubble = false
     @State private var detailStampScale: CGFloat = 1
     @State private var detailStampOpacity: Double = 1
@@ -46,7 +49,6 @@ struct EchoDetailView: View {
         _category = State(initialValue: memory.category)
         _emotion = State(initialValue: memory.emotion)
         _memoryText = State(initialValue: memory.memory)
-        _echoLine = State(initialValue: memory.echoLine)
         _year = State(initialValue: memory.year ?? "")
         _discoveryStatus = State(initialValue: memory.discoveryStatus)
     }
@@ -76,6 +78,7 @@ struct EchoDetailView: View {
                         topBar
                         titleBlock
                         aboutSection
+                        audioRecordingSection
                         metadataSection
                         relatedEchoesSection
                         recommendationsSection
@@ -121,6 +124,7 @@ struct EchoDetailView: View {
         }
         .onDisappear {
             pendingDismissTask?.cancel()
+            stopAudioPlayback()
         }
     }
 
@@ -137,6 +141,7 @@ struct EchoDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Return")
+                .accessibilityHint("Double tap to go back to the previous screen.")
 
                 Spacer()
 
@@ -250,6 +255,8 @@ struct EchoDetailView: View {
                 .foregroundStyle(EchoStyle.ink)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: minHeight)
+                .accessibilityLabel(label)
+                .accessibilityHint("Edit this text before saving the Echo.")
                 .padding(8)
                 .overlay(
                     Rectangle()
@@ -266,18 +273,11 @@ struct EchoDetailView: View {
             VStack(alignment: .leading, spacing: 14) {
                 if isEditing {
                     editorialTextEditor("Memory", text: $memoryText, minHeight: 116)
-                    editorialTextEditor("Echo", text: $echoLine, minHeight: 78)
                 } else {
                     Text(memory.memory)
                         .font(.system(size: 15, weight: .regular))
                         .lineSpacing(1.5)
                         .foregroundStyle(EchoStyle.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(memory.echoLine)
-                        .font(.system(size: 14, weight: .medium))
-                        .lineSpacing(1.5)
-                        .foregroundStyle(EchoStyle.ink.opacity(0.82))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -285,6 +285,140 @@ struct EchoDetailView: View {
 
             rule()
         }
+    }
+
+    @ViewBuilder
+    private var audioRecordingSection: some View {
+        if memory.audioFileName != nil {
+            VStack(alignment: .leading, spacing: 0) {
+                editorialSectionHeader("Voice")
+
+                audioBubble
+                    .padding(.vertical, 16)
+
+                if let audioPlaybackError {
+                    Text(audioPlaybackError)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundStyle(EchoStyle.ink.opacity(0.66))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 14)
+                }
+
+                rule()
+            }
+        }
+    }
+
+    private var audioBubble: some View {
+        HStack(spacing: 12) {
+            Button {
+                toggleAudioPlayback()
+            } label: {
+                Image(systemName: isAudioPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(hasPlayableAudio ? Color.white : EchoStyle.mutedInk)
+                    .frame(width: 36, height: 36)
+                    .background(hasPlayableAudio ? EchoStyle.ink : EchoStyle.surfaceSecondary)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!hasPlayableAudio)
+            .accessibilityLabel(isAudioPlaying ? "Pause voice recording" : "Play voice recording")
+            .accessibilityValue(formattedAudioDuration)
+            .accessibilityHint("Double tap to listen to the original spoken Echo.")
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 3) {
+                    ForEach(audioWaveformBars.indices, id: \.self) { index in
+                        Capsule()
+                            .fill(audioWaveformColor(for: index))
+                            .frame(width: 3, height: audioWaveformBars[index])
+                    }
+                }
+                .frame(height: 24, alignment: .center)
+                .accessibilityHidden(true)
+
+                Text(hasPlayableAudio ? formattedAudioDuration : "Recording unavailable")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(EchoStyle.ink.opacity(0.68))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "waveform")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(EchoStyle.mutedInk)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(EchoStyle.surfaceSecondary.opacity(0.72))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(EchoStyle.border.opacity(0.34), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+    }
+
+    private var hasPlayableAudio: Bool {
+        EchoAudioFileService.fileExists(fileName: memory.audioFileName)
+    }
+
+    private var formattedAudioDuration: String {
+        guard let duration = memory.audioDuration, duration.isFinite, duration > 0 else {
+            return "Recorded voice"
+        }
+
+        let totalSeconds = Int(duration.rounded())
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private var audioWaveformBars: [CGFloat] {
+        [8, 14, 20, 12, 18, 24, 10, 16, 22, 13, 19, 9, 15, 21, 11, 17, 23, 12]
+    }
+
+    private func audioWaveformColor(for index: Int) -> Color {
+        guard hasPlayableAudio else { return EchoStyle.mutedInk.opacity(0.24) }
+        if isAudioPlaying {
+            return index.isMultiple(of: 2) ? EchoStyle.ink : EchoStyle.ink.opacity(0.58)
+        }
+        return EchoStyle.ink.opacity(0.38)
+    }
+
+    private func toggleAudioPlayback() {
+        if isAudioPlaying {
+            audioPlayer?.pause()
+            isAudioPlaying = false
+            return
+        }
+
+        do {
+            guard let fileName = memory.audioFileName else { return }
+            let url = try EchoAudioFileService.recordingURL(for: fileName)
+            if audioPlayer == nil || audioPlayer?.url != url {
+                audioPlayer = try AVAudioPlayer(contentsOf: url)
+                audioPlayer?.prepareToPlay()
+            }
+
+            if let audioPlayer, audioPlayer.currentTime >= audioPlayer.duration {
+                audioPlayer.currentTime = 0
+            }
+
+            audioPlaybackError = nil
+            isAudioPlaying = audioPlayer?.play() == true
+        } catch {
+            audioPlaybackError = "Echo could not play this voice recording."
+            isAudioPlaying = false
+        }
+    }
+
+    private func stopAudioPlayback() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+        isAudioPlaying = false
     }
 
     private var metadataSection: some View {
@@ -350,6 +484,9 @@ struct EchoDetailView: View {
                         relatedEchoRow(link)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Open related Echo, \(link.target.title)")
+                    .accessibilityValue(link.reason)
+                    .accessibilityHint("Double tap to open this connected Echo.")
                 }
             }
         } else {
@@ -375,6 +512,9 @@ struct EchoDetailView: View {
                         recommendationRow(recommendation)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Open recommendation, \(recommendation.target.title)")
+                    .accessibilityValue(recommendation.reason)
+                    .accessibilityHint("Double tap to open this recommended Echo.")
                 }
             }
         }
@@ -390,6 +530,8 @@ struct EchoDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isSaving)
+                .accessibilityLabel("Cancel editing")
+                .accessibilityHint("Double tap to discard unsaved changes and leave edit mode.")
 
                 verticalRule()
 
@@ -400,6 +542,8 @@ struct EchoDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isSaving)
+                .accessibilityLabel(isSaving ? "Saving Echo" : "Save Echo")
+                .accessibilityHint("Double tap to save your edited Echo.")
             } else {
                 Button {
                     moveMemoryToTrash()
@@ -408,6 +552,8 @@ struct EchoDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(memory.deletedAt != nil)
+                .accessibilityLabel("Move Echo to Recently Deleted")
+                .accessibilityHint("Double tap to move this Echo to Recently Deleted. You can undo immediately.")
 
                 verticalRule()
 
@@ -417,6 +563,8 @@ struct EchoDetailView: View {
                     bottomActionLabel("Return")
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Return")
+                .accessibilityHint("Double tap to go back to the previous screen.")
 
                 verticalRule()
 
@@ -427,6 +575,8 @@ struct EchoDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(memory.deletedAt != nil)
+                .accessibilityLabel("Edit Echo")
+                .accessibilityHint("Double tap to edit title, creator, memory, status, and metadata.")
             }
         }
         .frame(height: 72)
@@ -501,6 +651,7 @@ struct EchoDetailView: View {
         }
         .pickerStyle(.menu)
         .tint(EchoStyle.ink)
+        .accessibilityHint("Double tap to choose the cultural category for this Echo.")
     }
 
     private var emotionPicker: some View {
@@ -518,6 +669,9 @@ struct EchoDetailView: View {
                 .contentShape(Rectangle())
         }
         .tint(EchoStyle.ink)
+        .accessibilityLabel("Emotion")
+        .accessibilityValue(emotion.title)
+        .accessibilityHint("Double tap to choose the emotion associated with this Echo.")
     }
 
     private var statusPicker: some View {
@@ -528,6 +682,7 @@ struct EchoDetailView: View {
         }
         .pickerStyle(.menu)
         .tint(EchoStyle.ink)
+        .accessibilityHint("Double tap to mark this Echo as discovered or not discovered.")
     }
 
     private func editableMetadataRow(leftLabel: String, leftContent: AnyView, rightLabel: String, rightContent: AnyView) -> some View {
@@ -569,6 +724,8 @@ struct EchoDetailView: View {
             .font(.system(size: 13, weight: .regular))
             .foregroundStyle(EchoStyle.ink)
             .textFieldStyle(.plain)
+            .accessibilityLabel(placeholder)
+            .accessibilityHint("Edit this metadata field before saving the Echo.")
     }
 
     private func staticMetadataValue(_ value: String) -> some View {
@@ -692,6 +849,8 @@ struct EchoDetailView: View {
             }
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(.white)
+            .accessibilityLabel("Undo move to Recently Deleted")
+            .accessibilityHint("Double tap to restore this Echo immediately.")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -822,9 +981,10 @@ struct EchoDetailView: View {
             category: category,
             emotion: emotion,
             memory: memoryText,
-            echoLine: echoLine,
             year: year.nilIfBlank,
             originalTranscript: memory.originalTranscript,
+            audioFileName: memory.audioFileName,
+            audioDuration: memory.audioDuration,
             discoveryStatus: discoveryStatus,
             unlockedAt: memory.unlockedAt
         )
@@ -846,7 +1006,6 @@ struct EchoDetailView: View {
         category = memory.category
         emotion = memory.emotion
         memoryText = memory.memory
-        echoLine = memory.echoLine
         year = memory.year ?? ""
         discoveryStatus = memory.discoveryStatus
     }
@@ -909,8 +1068,7 @@ struct EchoDetailView: View {
                 creator: "J.R.R. Tolkien",
                 category: .film,
                 emotion: .nostalgia,
-                memory: "I watched it every winter with my brother.",
-                echoLine: "The Lord of the Rings stayed with me as a winter ritual with my brother."
+                memory: "I watched it every winter with my brother."
             )
         )
     }
