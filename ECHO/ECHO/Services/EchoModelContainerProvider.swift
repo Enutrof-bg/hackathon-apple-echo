@@ -1,7 +1,6 @@
 import Foundation
 import SwiftData
 
-@MainActor
 enum EchoModelContainerProvider {
     static let shared: ModelContainer = {
         do {

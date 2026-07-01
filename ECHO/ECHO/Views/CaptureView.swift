@@ -6,8 +6,9 @@ struct CaptureView: View {
     @Environment(\.dismiss) private var dismiss
 
     var existingMemories: [EchoMemory] = []
+    private let autoStartSpeech: Bool
 
-    @State private var inputMode: CaptureInputMode = .speech
+    @State private var inputMode: CaptureInputMode
     @State private var transcript = ""
     @State private var generatedDraft: EchoMemoryDraft?
     @State private var errorMessage: String?
@@ -16,9 +17,20 @@ struct CaptureView: View {
     @State private var isScanningCover = false
     @State private var pendingCoverDraft: EchoMemoryDraft?
     @State private var transcriptionService = SpeechTranscriptionService()
+    @State private var didAutoStartSpeech = false
 
     private let extractionService = AIExtractionService()
     private let coverScanService = EchoCoverScanService()
+
+    init(
+        existingMemories: [EchoMemory] = [],
+        initialInputMode: CaptureInputMode = .speech,
+        autoStartSpeech: Bool = false
+    ) {
+        self.existingMemories = existingMemories
+        self.autoStartSpeech = autoStartSpeech
+        _inputMode = State(initialValue: initialInputMode)
+    }
 
     var body: some View {
         NavigationStack {
@@ -117,6 +129,9 @@ struct CaptureView: View {
                 if newMode != .speech {
                     transcriptionService.stopTranscribing()
                 }
+            }
+            .task {
+                await autoStartSpeechIfNeeded()
             }
             .onDisappear {
                 transcriptionService.stopTranscribing()
@@ -300,6 +315,12 @@ struct CaptureView: View {
             )
             await transcriptionService.startTranscribing()
         }
+    }
+
+    private func autoStartSpeechIfNeeded() async {
+        guard autoStartSpeech, inputMode == .speech, !didAutoStartSpeech else { return }
+        didAutoStartSpeech = true
+        await toggleSpeechCapture()
     }
 
     private func scanCover(_ image: UIImage) async {
