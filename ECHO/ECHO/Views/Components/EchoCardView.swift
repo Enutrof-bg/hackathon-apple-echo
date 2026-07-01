@@ -105,7 +105,7 @@ struct EchoCardView: View {
             category: .film,
             emotion: .nostalgia,
             memory: "I watched it every winter with my brother.",
-            echoLine: "A winter ritual that made courage feel close again."
+            echoLine: "The Lord of the Rings stayed with me as a winter ritual with my brother."
         )
     )
     .padding()

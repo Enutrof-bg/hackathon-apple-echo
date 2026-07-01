@@ -10,7 +10,9 @@ struct EchoDetailView: View {
     let candidateMemories: [EchoMemory]
 
     @State private var relatedLinks: [EchoMemoryLink] = []
+    @State private var recommendations: [EchoRecommendation] = []
     @State private var isLoadingRelatedLinks = false
+    @State private var isLoadingRecommendations = false
     @State private var isEditing = false
     @State private var deleteError: EchoUserFacingError?
     @State private var isShowingUndoBubble = false
@@ -18,6 +20,7 @@ struct EchoDetailView: View {
 
     private let persistenceService = EchoMemoryPersistenceService()
     private let linkService = EchoMemoryLinkService()
+    private let recommendationService = EchoRecommendationService()
 
     init(memory: EchoMemory, candidateMemories: [EchoMemory] = []) {
         self.memory = memory
@@ -34,6 +37,13 @@ struct EchoDetailView: View {
         return memory.id.uuidString + "|" + memoryIDs + "|" + linkIDs
     }
 
+    private var recommendationRefreshID: String {
+        let memoryIDs = candidateMemories.map { memory in
+            memory.id.uuidString + ":" + memory.discoveryStatus.rawValue
+        }.joined(separator: ",")
+        return memory.id.uuidString + "|" + memory.discoveryStatus.rawValue + "|" + memoryIDs
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
@@ -41,7 +51,7 @@ struct EchoDetailView: View {
                     EchoCardView(memory: memory)
 
                     detailSection(title: "Memory", text: memory.memory)
-                    detailSection(title: "Echo", text: memory.echoLine)
+                    detailSection(title: "Summary", text: memory.echoLine)
 
                     VStack(alignment: .leading, spacing: 8) {
                         detailRow("Category", memory.category.title)
@@ -58,6 +68,7 @@ struct EchoDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
                     relatedEchoesSection
+                    recommendationsSection
                 }
                 .padding(20)
             }
@@ -102,6 +113,9 @@ struct EchoDetailView: View {
         .task(id: relatedLinkRefreshID) {
             await loadRelatedLinks()
         }
+        .task(id: recommendationRefreshID) {
+            await loadRecommendations()
+        }
         .onDisappear {
             pendingDismissTask?.cancel()
         }
@@ -145,6 +159,40 @@ struct EchoDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private var recommendationsSection: some View {
+        if isLoadingRecommendations {
+            detailSection(title: "Recommended Next", text: "Looking through your discovery queue...")
+        } else if !recommendations.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Recommended Next")
+                        .font(.headline)
+
+#if DEBUG
+                    Spacer()
+
+                    Text("\(recommendations.count) shown")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+#endif
+                }
+
+                ForEach(recommendations) { recommendation in
+                    NavigationLink {
+                        EchoDetailView(memory: recommendation.target, candidateMemories: candidateMemories)
+                    } label: {
+                        recommendationRow(recommendation)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(16)
+            .background(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
 #if DEBUG
     private func debugMetric(_ text: String) -> some View {
         Text(text)
@@ -157,6 +205,48 @@ struct EchoDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 #endif
+
+    private func recommendationRow(_ recommendation: EchoRecommendation) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: recommendation.basis.symbolName)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(recommendation.target.title)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text(recommendation.basis.title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+#if DEBUG
+                HStack(spacing: 6) {
+                    debugMetric("Score \(recommendation.score)")
+                    debugMetric(recommendation.basis.rawValue)
+                }
+#endif
+
+                Text(recommendation.reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 4)
+    }
 
     private func relatedEchoRow(_ link: EchoMemoryLink) -> some View {
         HStack(alignment: .top, spacing: 12) {
@@ -247,6 +337,18 @@ struct EchoDetailView: View {
         isLoadingRelatedLinks = false
     }
 
+    private func loadRecommendations() async {
+        let candidates = candidateMemories.filter { $0.deletedAt == nil }
+        guard candidates.contains(where: { $0.id != memory.id && $0.discoveryStatus == .notDiscovered }) else {
+            recommendations = []
+            return
+        }
+
+        isLoadingRecommendations = true
+        recommendations = recommendationService.recommendations(for: memory, among: candidates)
+        isLoadingRecommendations = false
+    }
+
     private func moveMemoryToTrash() {
         do {
             try persistenceService.moveToTrash(memory, in: modelContext)
@@ -317,7 +419,7 @@ struct EchoDetailView: View {
                 category: .film,
                 emotion: .nostalgia,
                 memory: "I watched it every winter with my brother.",
-                echoLine: "A winter ritual that made courage feel close again."
+                echoLine: "The Lord of the Rings stayed with me as a winter ritual with my brother."
             )
         )
     }

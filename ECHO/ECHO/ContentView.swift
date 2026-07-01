@@ -3,7 +3,17 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        HomeView()
+        TabView {
+            HomeView()
+                .tabItem {
+                    Label("Echo", systemImage: "rectangle.stack")
+                }
+
+            DiscoverView()
+                .tabItem {
+                    Label("Discover", systemImage: "safari")
+                }
+        }
     }
 }
 

@@ -303,6 +303,66 @@ Transcript -> EchoTitleExtractionService deterministic title candidate
 
 `SystemLanguageModel.default` is checked before use. The app still works when Apple Intelligence is unavailable.
 
+### Discover Section
+
+Done in basic technical UI.
+
+`ContentView` now uses a `TabView` with:
+
+- `HomeView` for the saved Echo archive;
+- `DiscoverView` for saved discovery queue, hardcoded new suggestions, and rediscovery.
+
+Discover architecture:
+
+- `EchoDiscoverySuggestion` is the runtime display model for new suggested works not yet saved.
+- `EchoDiscoverySuggestionProviding` is the provider interface.
+- `EchoDiscoveryService` owns queue, rediscover, and suggestion filtering.
+- `HardcodedEchoDiscoverySuggestionProvider` currently returns curated hardcoded suggestions.
+
+`DiscoverView` sections:
+
+- `Your Queue`: active saved Echoes where `discoveryStatus == .notDiscovered`;
+- `New Suggestions`: hardcoded suggestions, filtered to avoid titles already in the archive;
+- `Rediscover`: older saved discovered Echoes.
+
+Selecting a hardcoded suggestion opens `ReviewCardView` with an `EchoMemoryDraft`, so the user can review/edit/save it as a real Echo. The provider boundary is intended to be replaced later by PCC, embeddings, or another recommendation algorithm without rewriting Discover UI.
+
+### Local Recommendations
+
+Done in basic technical UI.
+
+Echo now has a recommendation layer for not-yet-discovered cards:
+
+- `EchoRecommendation` is the runtime display model.
+- `EchoRecommendationBasis` describes why a recommendation appears.
+- `EchoRecommendationProviding` is the provider interface.
+- `EchoRecommendationService` owns display limits and filtering.
+- `LocalEchoRecommendationProvider` is the current hardcoded/local algorithm.
+
+Current local behavior:
+
+- recommends only active `notDiscovered` Echoes;
+- excludes the current Echo;
+- scores by shared emotion, category, creator, year, and memory keywords;
+- displays up to 3 recommendations in `EchoDetailView` under `Recommended Next`;
+- keeps recommendations separate from `Related Echoes`, which remains the memory graph.
+
+Architecture note: the provider boundary is intentionally present so a future PCC, embedding, API, or curated recommendation engine can replace `LocalEchoRecommendationProvider` without rewriting `EchoDetailView`.
+
+### Smart Local Search
+
+Done in basic technical UI.
+
+`HomeView` uses `EchoSearchService` instead of simple substring filtering. Search remains local and instant, with scoring across title, creator, category, emotion, discovery status, year, memory text, and echo line. The service also parses lightweight search intent from English/French query terms, including:
+
+- category, such as film/book/music/place;
+- emotion, such as sad/triste/solitude -> `melancholy`;
+- discovery status, such as `pas encore`, `a decouvrir`, `watchlist`, or `reading list` -> `notDiscovered`;
+- year queries;
+- theme aliases such as winter/hiver, family/famille, rain/pluie.
+
+Apple Intelligence is not in the search path yet; keep the search deterministic and offline-first unless a future step explicitly adds async query interpretation.
+
 ### Not-Yet-Discovered Cards
 
 Done in basic technical UI.
@@ -368,6 +428,23 @@ Current behavior:
 - Apple Intelligence / FoundationModels fallback is surfaced in `CaptureView` after local card generation.
 - Persistence alerts use generic local-storage messages instead of raw system error descriptions.
 - Manual review/edit remains available after fallback generation.
+
+### Summary Field Repositioning
+
+Done.
+
+The persisted property remains `echoLine` to avoid migration churn, but the product meaning is now `Summary`.
+
+Rules:
+
+- do not generate poetic taglines;
+- generate one clear factual/personal sentence grounded only in the transcript;
+- no metaphor, no invented meaning;
+- UI labels use `Summary` in form and detail views;
+- FoundationModels guides now ask for a grounded summary;
+- local fallback summarizes the transcript directly.
+
+Existing older cards may still contain poetic historical summaries until edited or regenerated.
 
 ### AI Anti-Hallucination Recalibration
 

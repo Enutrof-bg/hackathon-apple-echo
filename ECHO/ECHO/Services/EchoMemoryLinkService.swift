@@ -232,7 +232,7 @@ struct EchoMemoryLinkService {
             Emotion: \(memory.emotion.title)
             Year: \(memory.year ?? "Not provided")
             Memory: \(memory.memory)
-            Echo line: \(memory.echoLine)
+            Summary: \(memory.echoLine)
             """
         }.joined(separator: "\n\n")
 

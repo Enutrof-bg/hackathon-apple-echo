@@ -14,6 +14,7 @@ struct HomeView: View {
 #endif
 
     private let persistenceService = EchoMemoryPersistenceService()
+    private let searchService = EchoSearchService()
 #if DEBUG
     private let placeholderService = EchoPlaceholderService()
     private let linkService = EchoMemoryLinkService()
@@ -28,17 +29,11 @@ struct HomeView: View {
     }
 
     private var filteredMemories: [EchoMemory] {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return activeMemories
-        }
+        searchService.search(activeMemories, query: searchText)
+    }
 
-        return activeMemories.filter { memory in
-            memory.title.localizedCaseInsensitiveContains(searchText)
-            || memory.echoLine.localizedCaseInsensitiveContains(searchText)
-            || memory.memory.localizedCaseInsensitiveContains(searchText)
-            || memory.category.title.localizedCaseInsensitiveContains(searchText)
-            || memory.emotion.title.localizedCaseInsensitiveContains(searchText)
-        }
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -53,6 +48,8 @@ struct HomeView: View {
 
                         if activeMemories.isEmpty {
                             emptyState
+                        } else if filteredMemories.isEmpty, isSearching {
+                            searchEmptyState
                         } else {
                             memoryList
                         }
@@ -61,7 +58,7 @@ struct HomeView: View {
                 }
             }
             .navigationTitle("Echo")
-            .searchable(text: $searchText, prompt: "Search echoes")
+            .searchable(text: $searchText, prompt: "Search by title, mood, status, memory")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
@@ -152,6 +149,24 @@ struct HomeView: View {
                 .font(.headline)
 
             Text("Speak about a work, a place, or a moment that stayed with you.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 56)
+    }
+
+    private var searchEmptyState: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+
+            Text("No matching echoes.")
+                .font(.headline)
+
+            Text("Try a title, creator, emotion, status, or memory detail.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

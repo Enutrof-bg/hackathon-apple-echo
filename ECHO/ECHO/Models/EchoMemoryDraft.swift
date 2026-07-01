@@ -69,7 +69,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
             category: category,
             emotion: emotion,
             memory: memory.trimmedFallback("A memory I want to keep."),
-            echoLine: echoLine.trimmedFallback("A memory worth keeping."),
+            echoLine: echoLine.trimmedFallback("A short summary can be added after the memory is clearer."),
             year: year?.nilIfBlank,
             originalTranscript: originalTranscript?.nilIfBlank,
             discoveryStatus: discoveryStatus

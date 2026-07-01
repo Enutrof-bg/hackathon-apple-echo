@@ -60,11 +60,11 @@ struct EchoFormView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Echo")
+                Text("Summary")
                     .font(.subheadline)
                     .fontWeight(.medium)
 
-                TextField("Echo line", text: $echoLine, axis: .vertical)
+                TextField("Summary", text: $echoLine, axis: .vertical)
                     .lineLimit(2...4)
                     .textFieldStyle(.roundedBorder)
             }

@@ -78,7 +78,7 @@ struct AIExtractionService {
         - Choose one category and one dominant emotion.
         - Set discoveryStatus to notDiscovered if the user has not experienced it yet and is expressing a wish, plan, recommendation, or intention.
         - Preserve the user's memory; do not add events, people, or details.
-        - Echo line: one short emotional line, under 18 words.
+        - Summary: one clear factual sentence, grounded only in the transcript, no metaphor, no invented meaning, under 22 words.
         - Set confidence to low for vague, noisy, random, or incomplete input.
         \(titleCandidatePrompt(titleCandidate))
 
@@ -131,7 +131,7 @@ struct AIExtractionService {
             category: category,
             emotion: emotion,
             memory: memory,
-            echoLine: makeEchoLine(emotion: emotion, discoveryStatus: discoveryStatus),
+            echoLine: makeSummary(from: cleanedTranscript, discoveryStatus: discoveryStatus),
             year: extractYear(from: cleanedTranscript),
             originalTranscript: cleanedTranscript.isEmpty ? nil : cleanedTranscript,
             discoveryStatus: discoveryStatus
@@ -199,29 +199,19 @@ struct AIExtractionService {
         return notDiscoveredPatterns.contains { lowercased.contains($0) } ? .notDiscovered : .discovered
     }
 
-    private func makeEchoLine(emotion: EchoEmotion, discoveryStatus: EchoDiscoveryStatus) -> String {
-        if discoveryStatus == .notDiscovered {
-            return "A future Echo waiting to become a memory."
+    private func makeSummary(from transcript: String, discoveryStatus: EchoDiscoveryStatus) -> String {
+        let cleanedTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanedTranscript.isEmpty else {
+            return "A short summary can be added after the memory is clearer."
         }
 
-        switch emotion {
-        case .nostalgia:
-            return "A memory that still knows the way back."
-        case .joy:
-            return "A bright trace of something that made life lighter."
-        case .wonder:
-            return "A moment where the world felt larger than before."
-        case .melancholy:
-            return "A soft ache kept carefully, not forgotten."
-        case .calm:
-            return "A quiet place inside the noise of time."
-        case .shock:
-            return "A memory that arrived suddenly and stayed."
-        case .love:
-            return "A keepsake shaped by closeness."
-        case .curiosity:
-            return "A spark that kept asking to be followed."
-        }
+        let prefix = discoveryStatus == .notDiscovered ? "I want to remember to explore " : "I remember "
+        let maxBodyLength = 120
+        let body = String(cleanedTranscript.prefix(maxBodyLength))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: ".,!?;:"))
+
+        return prefix + body + "."
     }
 }
 
@@ -256,7 +246,7 @@ private struct GeneratedEchoDraft {
     @Guide(description: "Personal memory only. Stay close to the transcript.")
     var memory: String
 
-    @Guide(description: "Short poetic line, maximum 18 words")
+    @Guide(description: "One clear summary sentence grounded only in the transcript, no metaphor or invented meaning")
     var echoLine: String
 
     @Guide(description: "Explicit four-digit year only. Nil if absent or uncertain.")
@@ -271,7 +261,7 @@ private struct GeneratedEchoDraft {
         let cleanedCreator = creator.cleanGeneratedOptionalField
         let cleanedYear = year.validGeneratedYear
         let cleanedMemory = memory.cleanGeneratedRequiredField(fallback: originalMemory)
-        let cleanedEchoLine = echoLine.cleanGeneratedRequiredField(fallback: "A memory worth keeping.")
+        let cleanedEchoLine = echoLine.cleanGeneratedRequiredField(fallback: originalMemory.shortGeneratedSummary)
         let resolvedTitle = titleCandidate?.title ?? (confidence.allowsSpecificFacts ? cleanedTitle : nil) ?? "Untitled Echo"
         let resolvedCreator = titleCandidate?.creator ?? (confidence.allowsSpecificFacts ? cleanedCreator : nil)
         let resolvedCategory = titleCandidate?.category ?? category.echoCategory
@@ -414,6 +404,18 @@ private extension String {
 
     func cleanGeneratedRequiredField(fallback: String) -> String {
         cleanGeneratedOptionalField ?? fallback
+    }
+
+    var shortGeneratedSummary: String {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return "A short summary can be added after the memory is clearer."
+        }
+
+        let body = String(trimmed.prefix(140))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: ".,!?;:"))
+        return body + "."
     }
 
     var normalizedGeneratedValue: String {

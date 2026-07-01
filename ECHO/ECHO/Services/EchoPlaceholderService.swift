@@ -49,7 +49,7 @@ struct EchoPlaceholderService {
             - One should connect to wonder or curiosity.
             - One should connect to nostalgia, family, or ritual.
             - Keep memory under 32 words.
-            - Keep echoLine under 16 words.
+            - Keep echoLine as one clear summary sentence under 22 words, grounded in the memory.
             - Use creator and year only if clearly safe; nil is allowed.
             """,
             generating: GeneratedEchoPlaceholders.self
@@ -71,7 +71,7 @@ struct EchoPlaceholderService {
                 category: .film,
                 emotion: .melancholy,
                 memory: "I remember leaving the cinema with the rain still in my head. The city felt lonely, huge, and strangely beautiful.",
-                echoLine: "A neon ache that made loneliness feel almost sacred.",
+                echoLine: "Blade Runner 2049 stayed with me for its rain, loneliness, and vast city atmosphere.",
                 year: "2017",
                 originalTranscript: "I remember Blade Runner 2049 after the cinema, the rain, loneliness, and beauty.",
                 createdAt: now.addingTimeInterval(-86_400)
@@ -82,7 +82,7 @@ struct EchoPlaceholderService {
                 category: .film,
                 emotion: .melancholy,
                 memory: "Her stayed with me because it made technology feel intimate and sad, like a warm voice in an empty apartment.",
-                echoLine: "A soft future where love sounded close and unreachable.",
+                echoLine: "Her stayed with me because it made technology feel intimate, lonely, and emotionally close.",
                 year: "2013",
                 originalTranscript: "Her made technology feel intimate, sad, and lonely.",
                 createdAt: now.addingTimeInterval(-172_800)
@@ -93,7 +93,7 @@ struct EchoPlaceholderService {
                 category: .film,
                 emotion: .nostalgia,
                 memory: "I watched it every winter with my brother. The music still brings back blankets, cold evenings, and feeling brave together.",
-                echoLine: "A winter ritual that made courage feel close again.",
+                echoLine: "The Lord of the Rings stayed with me as a winter ritual with my brother.",
                 year: "2001",
                 originalTranscript: "The Lord of the Rings every winter with my brother made me nostalgic.",
                 createdAt: now.addingTimeInterval(-259_200)
@@ -104,7 +104,7 @@ struct EchoPlaceholderService {
                 category: .film,
                 emotion: .wonder,
                 memory: "The bathhouse felt endless when I first saw it, full of strange rules, quiet fear, and magic hiding inside ordinary gestures.",
-                echoLine: "A doorway into a world that kept unfolding.",
+                echoLine: "Spirited Away stayed with me for its bathhouse, strange rules, fear, and wonder.",
                 year: "2001",
                 originalTranscript: "Spirited Away gave me wonder, fear, and magic in the bathhouse.",
                 createdAt: now.addingTimeInterval(-345_600)
@@ -115,7 +115,7 @@ struct EchoPlaceholderService {
                 category: .book,
                 emotion: .curiosity,
                 memory: "I kept thinking about snow, trust, and how a different world can quietly change what feels obvious about people.",
-                echoLine: "A cold journey that widened the shape of human possibility.",
+                echoLine: "The Left Hand of Darkness stayed with me for snow, trust, and changed assumptions about people.",
                 year: "1969",
                 originalTranscript: "The Left Hand of Darkness made me curious about snow, trust, and people.",
                 createdAt: now.addingTimeInterval(-432_000)
@@ -126,7 +126,7 @@ struct EchoPlaceholderService {
                 category: .book,
                 emotion: .curiosity,
                 memory: "I want to read it because imagined cities feel like a doorway into memory, architecture, and strange inner maps.",
-                echoLine: "A future Echo waiting to become a memory.",
+                echoLine: "Invisible Cities is in my discovery queue because imagined cities sound beautiful and strange.",
                 year: "1972",
                 originalTranscript: "I want to read Invisible Cities because imagined cities sound beautiful and strange.",
                 discoveryStatus: .notDiscovered,
@@ -176,7 +176,7 @@ private struct GeneratedEchoPlaceholder {
             category: category.echoCategory,
             emotion: emotion.echoEmotion,
             memory: memory.trimmedFallback("A generated memory for testing Echo links."),
-            echoLine: echoLine.trimmedFallback("A generated Echo for testing."),
+            echoLine: echoLine.trimmedFallback("This generated sample summarizes a memory for testing."),
             year: year.validPlaceholderYear,
             originalTranscript: "Generated debug sample from Apple Intelligence."
         ).sanitized

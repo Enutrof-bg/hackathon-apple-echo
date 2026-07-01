@@ -135,7 +135,7 @@ struct ReviewCardView: View {
             category: .film,
             emotion: .wonder,
             memory: "I watched it with my sister when we were kids.",
-            echoLine: "A childhood memory wrapped in magic and safety."
+            echoLine: "Spirited Away reminds me of watching a magical film with my sister as a child."
         )
     )
     .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self], inMemory: true)
