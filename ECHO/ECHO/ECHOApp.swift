@@ -7,6 +7,6 @@ struct ECHOApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self])
+        .modelContainer(EchoModelContainerProvider.shared)
     }
 }

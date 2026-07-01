@@ -92,6 +92,16 @@ final class SpeechTranscriptionService {
         }
     }
 
+    func finishTranscribingAndReturnTranscript() async -> String {
+        guard captureInputProvider != nil || analyzer != nil else { return transcript }
+
+        didStopIntentionally = true
+        state = .stopping
+        await finishCurrentSession()
+        try? await Task.sleep(for: .milliseconds(250))
+        return transcript
+    }
+
     func resetTranscript() {
         transcript = ""
         finalizedTranscriptParts = []

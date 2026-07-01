@@ -23,7 +23,12 @@ struct ReviewCardView: View {
     private let persistenceService = EchoMemoryPersistenceService()
     private let linkService = EchoMemoryLinkService()
 
-    init(draft: EchoMemoryDraft, existingMemories: [EchoMemory] = [], onSave: (() -> Void)? = nil) {
+    init(
+        draft: EchoMemoryDraft,
+        existingMemories: [EchoMemory] = [],
+        startsEditing: Bool = false,
+        onSave: (() -> Void)? = nil
+    ) {
         _title = State(initialValue: draft.title)
         _creator = State(initialValue: draft.creator ?? "")
         _category = State(initialValue: draft.category)
@@ -32,6 +37,7 @@ struct ReviewCardView: View {
         _echoLine = State(initialValue: draft.echoLine)
         _year = State(initialValue: draft.year ?? "")
         _discoveryStatus = State(initialValue: draft.discoveryStatus)
+        _isEditing = State(initialValue: startsEditing)
         originalTranscript = draft.originalTranscript
         self.existingMemories = existingMemories
         self.onSave = onSave
@@ -100,7 +106,7 @@ struct ReviewCardView: View {
     }
 
     private var previewDraft: EchoMemoryDraft {
-        makeDraft().sanitized
+        makeDraft()
     }
 
     private func saveDraft() async {

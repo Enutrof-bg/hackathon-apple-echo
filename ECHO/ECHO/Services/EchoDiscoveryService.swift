@@ -60,7 +60,7 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 originalTranscript: "Hardcoded Discover suggestion: Stalker by Andrei Tarkovsky.",
                 discoveryStatus: .notDiscovered
             ),
-            reason: "For Echoes that orbit solitude, mystery, and slow emotional landscapes.",
+            reason: "You seem drawn to solitude, mystery, and slow emotional landscapes.",
             basis: .hardcodedSeed
         ),
         EchoDiscoverySuggestion(
@@ -75,7 +75,7 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 originalTranscript: "Hardcoded Discover suggestion: Invisible Cities by Italo Calvino.",
                 discoveryStatus: .notDiscovered
             ),
-            reason: "For users drawn to places, architecture, memory, and poetic fragments.",
+            reason: "This fits your interest in places, architecture, memory, and fragmented storytelling.",
             basis: .hardcodedSeed
         ),
         EchoDiscoverySuggestion(
@@ -90,7 +90,7 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 originalTranscript: "Hardcoded Discover suggestion: The Dispossessed by Ursula K. Le Guin.",
                 discoveryStatus: .notDiscovered
             ),
-            reason: "For Echoes about worlds that change how people understand society and selfhood.",
+            reason: "A good match for your curiosity about imagined societies, identity, exile, and belonging.",
             basis: .hardcodedSeed
         ),
         EchoDiscoverySuggestion(
@@ -105,7 +105,7 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 originalTranscript: "Hardcoded Discover suggestion: Kind of Blue by Miles Davis.",
                 discoveryStatus: .notDiscovered
             ),
-            reason: "For moments that need quiet, atmosphere, and emotional spaciousness.",
+            reason: "For a quieter mood: spacious sound, blue-hour atmosphere, and room to breathe.",
             basis: .hardcodedSeed
         ),
         EchoDiscoverySuggestion(
@@ -120,7 +120,7 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 originalTranscript: "Hardcoded Discover suggestion: The Garden of Forking Paths by Jorge Luis Borges.",
                 discoveryStatus: .notDiscovered
             ),
-            reason: "For Echoes around puzzles, memory, time, and strange intellectual wonder.",
+            reason: "If time, memory, and labyrinth-like stories intrigue you, this belongs in the queue.",
             basis: .hardcodedSeed
         ),
         EchoDiscoverySuggestion(
@@ -135,7 +135,7 @@ struct HardcodedEchoDiscoverySuggestionProvider: EchoDiscoverySuggestionProvidin
                 originalTranscript: "Hardcoded Discover suggestion: Paris, Texas by Wim Wenders.",
                 discoveryStatus: .notDiscovered
             ),
-            reason: "For Echoes shaped by absence, travel, family, and soft melancholy.",
+            reason: "Recommended for the thread between absence, travel, family ties, and soft melancholy.",
             basis: .hardcodedSeed
         )
     ]

@@ -3,6 +3,7 @@ import Foundation
 enum CaptureInputMode: String, CaseIterable, Identifiable {
     case speech
     case text
+    case camera
 
     var id: String { rawValue }
 
@@ -10,6 +11,7 @@ enum CaptureInputMode: String, CaseIterable, Identifiable {
         switch self {
         case .speech: "Speak"
         case .text: "Type"
+        case .camera: "Camera"
         }
     }
 }

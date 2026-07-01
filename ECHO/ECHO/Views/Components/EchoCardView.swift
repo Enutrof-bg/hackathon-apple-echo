@@ -71,6 +71,15 @@ struct EchoCardView: View {
                 }
             }
 
+            if !content.echoLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(content.echoLine)
+                    .font(.caption)
+                    .foregroundStyle(EchoStyle.mutedInk)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 8)
+            }
+
             Spacer(minLength: 12)
 
             cardFooter

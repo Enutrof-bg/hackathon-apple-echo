@@ -6,6 +6,12 @@ struct HomeView: View {
     @Query(sort: \EchoMemory.createdAt, order: .reverse) private var memories: [EchoMemory]
 
     @State private var isShowingCapture = false
+    @State private var searchText = ""
+    @State private var navigation = EchoAppNavigation.shared
+    @State private var handledCaptureRequestID = EchoAppNavigation.shared.captureRequestID
+    @State private var handledSearchRequestID = EchoAppNavigation.shared.searchRequestID
+    @State private var captureInitialMode: CaptureInputMode = .speech
+    @State private var captureAutoStartSpeech = false
     @State private var purgeError: EchoUserFacingError?
 #if DEBUG
     @State private var isLoadingSampleEchoes = false
@@ -47,10 +53,26 @@ struct HomeView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $isShowingCapture) {
-                CaptureView(existingMemories: activeMemories)
+                CaptureView(
+                    existingMemories: activeMemories,
+                    initialInputMode: captureInitialMode,
+                    autoStartSpeech: captureAutoStartSpeech
+                )
             }
             .task {
                 purgeExpiredDeletedMemoriesIfNeeded()
+            }
+            .onChange(of: navigation.captureRequestID) { _, requestID in
+                guard requestID != handledCaptureRequestID else { return }
+                handledCaptureRequestID = requestID
+                captureInitialMode = navigation.requestedCaptureMode
+                captureAutoStartSpeech = navigation.shouldStartSpeechCapture
+                isShowingCapture = true
+            }
+            .onChange(of: navigation.searchRequestID) { _, requestID in
+                guard requestID != handledSearchRequestID else { return }
+                handledSearchRequestID = requestID
+                searchText = navigation.requestedSearchText
             }
             .alert(item: $purgeError) { error in
                 Alert(
