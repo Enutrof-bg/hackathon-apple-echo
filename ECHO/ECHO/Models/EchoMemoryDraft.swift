@@ -9,6 +9,7 @@ protocol EchoCardPresentable {
     var echoLine: String { get }
     var year: String? { get }
     var originalTranscript: String? { get }
+    var discoveryStatus: EchoDiscoveryStatus { get }
 }
 
 struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
@@ -21,6 +22,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
     var echoLine: String
     var year: String?
     var originalTranscript: String?
+    var discoveryStatus: EchoDiscoveryStatus
 
     init(
         id: UUID = UUID(),
@@ -31,7 +33,8 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         memory: String,
         echoLine: String,
         year: String? = nil,
-        originalTranscript: String? = nil
+        originalTranscript: String? = nil,
+        discoveryStatus: EchoDiscoveryStatus = .discovered
     ) {
         self.id = id
         self.title = title
@@ -42,6 +45,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         self.echoLine = echoLine
         self.year = year
         self.originalTranscript = originalTranscript
+        self.discoveryStatus = discoveryStatus
     }
 
     init(memory: EchoMemory) {
@@ -54,6 +58,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         self.echoLine = memory.echoLine
         self.year = memory.year
         self.originalTranscript = memory.originalTranscript
+        self.discoveryStatus = memory.discoveryStatus
     }
 
     var sanitized: EchoMemoryDraft {
@@ -66,7 +71,8 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
             memory: memory.trimmedFallback("A memory I want to keep."),
             echoLine: echoLine.trimmedFallback("A memory worth keeping."),
             year: year?.nilIfBlank,
-            originalTranscript: originalTranscript?.nilIfBlank
+            originalTranscript: originalTranscript?.nilIfBlank,
+            discoveryStatus: discoveryStatus
         )
     }
 
@@ -81,6 +87,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
             echoLine: draft.echoLine,
             year: draft.year,
             originalTranscript: draft.originalTranscript,
+            discoveryStatus: draft.discoveryStatus,
             createdAt: createdAt
         )
     }

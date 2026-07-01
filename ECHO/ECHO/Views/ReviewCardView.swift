@@ -12,14 +12,18 @@ struct ReviewCardView: View {
     @State private var memoryText: String
     @State private var echoLine: String
     @State private var year: String
+    @State private var discoveryStatus: EchoDiscoveryStatus
     @State private var isEditing = false
+    @State private var isSaving = false
     @State private var saveError: EchoUserFacingError?
 
     private let originalTranscript: String?
+    private let existingMemories: [EchoMemory]
     private let onSave: (() -> Void)?
     private let persistenceService = EchoMemoryPersistenceService()
+    private let linkService = EchoMemoryLinkService()
 
-    init(draft: EchoMemoryDraft, onSave: (() -> Void)? = nil) {
+    init(draft: EchoMemoryDraft, existingMemories: [EchoMemory] = [], onSave: (() -> Void)? = nil) {
         _title = State(initialValue: draft.title)
         _creator = State(initialValue: draft.creator ?? "")
         _category = State(initialValue: draft.category)
@@ -27,7 +31,9 @@ struct ReviewCardView: View {
         _memoryText = State(initialValue: draft.memory)
         _echoLine = State(initialValue: draft.echoLine)
         _year = State(initialValue: draft.year ?? "")
+        _discoveryStatus = State(initialValue: draft.discoveryStatus)
         originalTranscript = draft.originalTranscript
+        self.existingMemories = existingMemories
         self.onSave = onSave
     }
 
@@ -45,7 +51,8 @@ struct ReviewCardView: View {
                             emotion: $emotion,
                             memoryText: $memoryText,
                             echoLine: $echoLine,
-                            year: $year
+                            year: $year,
+                            discoveryStatus: $discoveryStatus
                         )
                     }
                 }
@@ -68,10 +75,13 @@ struct ReviewCardView: View {
                 }
 
                 ToolbarItem(placement: .bottomBar) {
-                    Button("Save Echo") {
-                        saveDraft()
+                    Button(isSaving ? "Saving..." : "Save Echo") {
+                        Task {
+                            await saveDraft()
+                        }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(isSaving)
                 }
             }
             .alert(item: $saveError) { error in
@@ -88,13 +98,18 @@ struct ReviewCardView: View {
         makeDraft().sanitized
     }
 
-    private func saveDraft() {
+    private func saveDraft() async {
+        guard !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
+
         do {
-            try persistenceService.insert(makeDraft(), in: modelContext)
+            let savedMemory = try persistenceService.insert(makeDraft(), in: modelContext)
+            try? linkService.createAndStoreLinks(for: savedMemory, among: existingMemories, in: modelContext)
             dismiss()
             onSave?()
         } catch {
-            saveError = EchoUserFacingError(message: error.localizedDescription)
+            saveError = .persistenceFailure(action: "save this Echo")
         }
     }
 
@@ -107,7 +122,8 @@ struct ReviewCardView: View {
             memory: memoryText,
             echoLine: echoLine,
             year: year.nilIfBlank,
-            originalTranscript: originalTranscript
+            originalTranscript: originalTranscript,
+            discoveryStatus: discoveryStatus
         )
     }
 }
@@ -122,5 +138,5 @@ struct ReviewCardView: View {
             echoLine: "A childhood memory wrapped in magic and safety."
         )
     )
-    .modelContainer(for: EchoMemory.self, inMemory: true)
+    .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self], inMemory: true)
 }

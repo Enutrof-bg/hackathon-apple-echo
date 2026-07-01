@@ -70,6 +70,14 @@ struct SpeechRecognitionContextProvider {
         return context
     }
 
+    static func contextualStrings(from memories: [EchoMemory]) -> [String] {
+        let memoryTerms = memories.flatMap { memory in
+            [memory.title, memory.creator].compactMap { $0 }
+        }
+
+        return normalizedContextualStrings(from: memoryTerms + defaultCulturalTerms)
+    }
+
     static func normalizedContextualStrings(from strings: [String]) -> [String] {
         var seenTerms = Set<String>()
         var normalizedTerms: [String] = []

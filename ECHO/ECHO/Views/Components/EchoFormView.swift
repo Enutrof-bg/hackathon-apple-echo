@@ -8,6 +8,7 @@ struct EchoFormView: View {
     @Binding var memoryText: String
     @Binding var echoLine: String
     @Binding var year: String
+    @Binding var discoveryStatus: EchoDiscoveryStatus
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -34,6 +35,13 @@ struct EchoFormView: View {
                 }
             }
             .pickerStyle(.menu)
+
+            Picker("Status", selection: $discoveryStatus) {
+                ForEach(EchoDiscoveryStatus.allCases) { status in
+                    Label(status.title, systemImage: status.symbolName).tag(status)
+                }
+            }
+            .pickerStyle(.segmented)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Memory")

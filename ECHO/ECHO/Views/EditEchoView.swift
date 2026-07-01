@@ -6,6 +6,7 @@ struct EditEchoView: View {
     @Environment(\.dismiss) private var dismiss
 
     let memory: EchoMemory
+    let candidateMemories: [EchoMemory]
 
     @State private var title: String
     @State private var creator: String
@@ -14,12 +15,16 @@ struct EditEchoView: View {
     @State private var memoryText: String
     @State private var echoLine: String
     @State private var year: String
+    @State private var discoveryStatus: EchoDiscoveryStatus
+    @State private var isSaving = false
     @State private var saveError: EchoUserFacingError?
 
     private let persistenceService = EchoMemoryPersistenceService()
+    private let linkService = EchoMemoryLinkService()
 
-    init(memory: EchoMemory) {
+    init(memory: EchoMemory, candidateMemories: [EchoMemory] = []) {
         self.memory = memory
+        self.candidateMemories = candidateMemories
         _title = State(initialValue: memory.title)
         _creator = State(initialValue: memory.creator ?? "")
         _category = State(initialValue: memory.category)
@@ -27,6 +32,7 @@ struct EditEchoView: View {
         _memoryText = State(initialValue: memory.memory)
         _echoLine = State(initialValue: memory.echoLine)
         _year = State(initialValue: memory.year ?? "")
+        _discoveryStatus = State(initialValue: memory.discoveryStatus)
     }
 
     var body: some View {
@@ -39,7 +45,8 @@ struct EditEchoView: View {
                     emotion: $emotion,
                     memoryText: $memoryText,
                     echoLine: $echoLine,
-                    year: $year
+                    year: $year,
+                    discoveryStatus: $discoveryStatus
                 )
                 .padding(20)
             }
@@ -54,9 +61,12 @@ struct EditEchoView: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveChanges()
+                    Button(isSaving ? "Saving..." : "Save") {
+                        Task {
+                            await saveChanges()
+                        }
                     }
+                    .disabled(isSaving)
                 }
             }
             .alert(item: $saveError) { error in
@@ -69,12 +79,17 @@ struct EditEchoView: View {
         }
     }
 
-    private func saveChanges() {
+    private func saveChanges() async {
+        guard !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
+
         do {
             try persistenceService.update(memory, with: draft, in: modelContext)
+            try? linkService.refreshStoredLinks(for: memory, among: candidateMemories, in: modelContext)
             dismiss()
         } catch {
-            saveError = EchoUserFacingError(message: error.localizedDescription)
+            saveError = .persistenceFailure(action: "update this Echo")
         }
     }
 
@@ -88,7 +103,8 @@ struct EditEchoView: View {
             memory: memoryText,
             echoLine: echoLine,
             year: year.nilIfBlank,
-            originalTranscript: memory.originalTranscript
+            originalTranscript: memory.originalTranscript,
+            discoveryStatus: discoveryStatus
         )
     }
 }

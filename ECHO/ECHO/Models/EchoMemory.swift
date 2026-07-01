@@ -12,6 +12,7 @@ final class EchoMemory {
     var echoLine: String
     var year: String?
     var originalTranscript: String?
+    var discoveryStatusRawValue: String?
     var createdAt: Date
     var deletedAt: Date?
 
@@ -25,6 +26,7 @@ final class EchoMemory {
         echoLine: String,
         year: String? = nil,
         originalTranscript: String? = nil,
+        discoveryStatus: EchoDiscoveryStatus = .discovered,
         createdAt: Date = Date(),
         deletedAt: Date? = nil
     ) {
@@ -37,8 +39,51 @@ final class EchoMemory {
         self.echoLine = echoLine
         self.year = year
         self.originalTranscript = originalTranscript
+        self.discoveryStatusRawValue = discoveryStatus.rawValue
         self.createdAt = createdAt
         self.deletedAt = deletedAt
+    }
+
+    @Transient
+    var discoveryStatus: EchoDiscoveryStatus {
+        get {
+            guard let rawValue = discoveryStatusRawValue,
+                  let status = EchoDiscoveryStatus(rawValue: rawValue) else {
+                return .discovered
+            }
+            return status
+        }
+        set {
+            discoveryStatusRawValue = newValue.rawValue
+        }
+    }
+}
+
+enum EchoDiscoveryStatus: String, Codable, CaseIterable, Identifiable {
+    case discovered
+    case notDiscovered
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .discovered: "Discovered"
+        case .notDiscovered: "Not Discovered"
+        }
+    }
+
+    var badgeTitle: String {
+        switch self {
+        case .discovered: "Discovered"
+        case .notDiscovered: "Not discovered yet"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .discovered: "checkmark.circle"
+        case .notDiscovered: "clock"
+        }
     }
 }
 

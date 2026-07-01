@@ -15,6 +15,17 @@ struct EchoCardView: View {
                     .fontWeight(.medium)
                     .foregroundStyle(accentColor)
 
+                if content.discoveryStatus == .notDiscovered {
+                    Label(content.discoveryStatus.badgeTitle, systemImage: content.discoveryStatus.symbolName)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.tertiarySystemGroupedBackground))
+                        .clipShape(Capsule())
+                }
+
                 Spacer()
 
                 Text(content.emotion.title)
@@ -44,24 +55,44 @@ struct EchoCardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
-        .background(.white)
+        .background(cardBackgroundColor)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(accentColor.opacity(0.25), lineWidth: 1)
+                .stroke(borderColor, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
+    private var cardBackgroundColor: Color {
+        content.discoveryStatus == .notDiscovered ? Color(.secondarySystemGroupedBackground) : .white
+    }
+
+    private var borderColor: Color {
+        content.discoveryStatus == .notDiscovered ? Color.secondary.opacity(0.22) : accentColor.opacity(0.25)
+    }
+
     private var accentColor: Color {
+        if content.discoveryStatus == .notDiscovered {
+            return .secondary
+        }
+
         switch content.emotion {
-        case .nostalgia: .indigo
-        case .joy: .yellow
-        case .wonder: .purple
-        case .melancholy: .blue
-        case .calm: .teal
-        case .shock: .red
-        case .love: .pink
-        case .curiosity: .green
+        case .nostalgia:
+            return .indigo
+        case .joy:
+            return .yellow
+        case .wonder:
+            return .purple
+        case .melancholy:
+            return .blue
+        case .calm:
+            return .teal
+        case .shock:
+            return .red
+        case .love:
+            return .pink
+        case .curiosity:
+            return .green
         }
     }
 }

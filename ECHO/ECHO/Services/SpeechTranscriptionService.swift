@@ -9,6 +9,7 @@ enum SpeechCaptureState: Equatable {
     case requestingPermission
     case ready
     case listening
+    case stopping
     case unavailable
     case failed(String)
 
@@ -18,6 +19,7 @@ enum SpeechCaptureState: Equatable {
         case .requestingPermission: "Requesting permission..."
         case .ready: "Ready to record"
         case .listening: "Listening..."
+        case .stopping: "Finishing recording..."
         case .unavailable: "Speech recognition is unavailable."
         case .failed(let message): message
         }
@@ -25,6 +27,10 @@ enum SpeechCaptureState: Equatable {
 
     var isListening: Bool {
         self == .listening
+    }
+
+    var isStopping: Bool {
+        self == .stopping
     }
 }
 
@@ -43,6 +49,8 @@ final class SpeechTranscriptionService {
     private var analysisTask: Task<Void, Never>?
     private var resultTask: Task<Void, Never>?
     private var didStopIntentionally = false
+    private var finalizedTranscriptParts: [String] = []
+    private var volatileTranscriptPart = ""
     private var contextualStrings: [String]
 
     init(
@@ -69,7 +77,7 @@ final class SpeechTranscriptionService {
             state = .listening
         } catch {
             await cancelCurrentSession()
-            state = .failed(error.localizedDescription)
+            state = .failed(Self.userFacingSpeechMessage(for: error))
         }
     }
 
@@ -77,7 +85,7 @@ final class SpeechTranscriptionService {
         guard captureInputProvider != nil || analyzer != nil else { return }
 
         didStopIntentionally = true
-        state = .ready
+        state = .stopping
 
         Task {
             await finishCurrentSession()
@@ -86,6 +94,8 @@ final class SpeechTranscriptionService {
 
     func resetTranscript() {
         transcript = ""
+        finalizedTranscriptParts = []
+        volatileTranscriptPart = ""
     }
 
     func updateContextualStrings(_ strings: [String]) {
@@ -126,6 +136,7 @@ final class SpeechTranscriptionService {
     private func startAnalyzerSession() async throws {
         await cancelCurrentSession()
         didStopIntentionally = false
+        resetTranscriptBuffers(keepingVisibleTranscript: !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
         let transcriber = DictationTranscriber(locale: recognitionLocale, preset: .progressiveLongDictation)
         let modules: [any SpeechModule] = [transcriber]
@@ -163,17 +174,49 @@ final class SpeechTranscriptionService {
             do {
                 for try await result in transcriber.results {
                     let text = String(result.text.characters)
+                    let isFinal = result.isFinal
                     await MainActor.run {
-                        self?.transcript = text
+                        self?.applyTranscriptionResult(text, isFinal: isFinal)
                     }
                 }
             } catch {
                 await MainActor.run {
                     guard let self, !self.didStopIntentionally else { return }
-                    self.state = .failed(error.localizedDescription)
+                    self.state = .failed(Self.userFacingSpeechMessage(for: error))
                 }
             }
         }
+    }
+
+    fileprivate func applyTranscriptionResult(_ text: String, isFinal: Bool) {
+        let cleanedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanedText.isEmpty else { return }
+
+        if isFinal {
+            appendFinalTranscriptPart(cleanedText)
+            volatileTranscriptPart = ""
+        } else {
+            volatileTranscriptPart = cleanedText
+        }
+
+        transcript = composedTranscript
+    }
+
+    private func appendFinalTranscriptPart(_ text: String) {
+        if finalizedTranscriptParts.last == text { return }
+        finalizedTranscriptParts.append(text)
+    }
+
+    private var composedTranscript: String {
+        (finalizedTranscriptParts + [volatileTranscriptPart])
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    fileprivate func resetTranscriptBuffers(keepingVisibleTranscript: Bool) {
+        finalizedTranscriptParts = keepingVisibleTranscript ? [transcript.trimmingCharacters(in: .whitespacesAndNewlines)].filter { !$0.isEmpty } : []
+        volatileTranscriptPart = ""
     }
 
     private func startAnalysisTask<InputSequence>(
@@ -192,7 +235,7 @@ final class SpeechTranscriptionService {
             } catch {
                 await MainActor.run {
                     guard let self, !self.didStopIntentionally else { return }
-                    self.state = .failed(error.localizedDescription)
+                    self.state = .failed(Self.userFacingSpeechMessage(for: error))
                 }
             }
 
@@ -208,13 +251,20 @@ final class SpeechTranscriptionService {
         captureInputProvider = nil
         transcriber = nil
 
-        guard let analyzer else { return }
+        guard let analyzer else {
+            state = .ready
+            return
+        }
 
         do {
             try await analyzer.finalizeAndFinishThroughEndOfInput()
+            state = .ready
         } catch {
-            guard !didStopIntentionally else { return }
-            state = .failed(error.localizedDescription)
+            guard !didStopIntentionally else {
+                state = .ready
+                return
+            }
+            state = .failed(Self.userFacingSpeechMessage(for: error))
         }
     }
 
@@ -243,6 +293,24 @@ final class SpeechTranscriptionService {
         resultTask = nil
     }
 
+    private static func userFacingSpeechMessage(for error: Error) -> String {
+        if let speechError = error as? SpeechTranscriptionError,
+           let message = speechError.errorDescription {
+            return message
+        }
+
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            return "Speech assets could not be downloaded right now. Check your connection, or type your memory instead."
+        }
+
+        if nsError.domain == AVFoundationErrorDomain {
+            return "Echo could not start microphone capture. Check microphone access, or type your memory instead."
+        }
+
+        return "Speech capture stopped unexpectedly. You can try recording again or switch to Type mode."
+    }
+
     private func requestMicrophonePermission() async -> Bool {
         await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { granted in
@@ -261,13 +329,13 @@ enum SpeechTranscriptionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .recognizerUnavailable:
-            "Speech recognition is unavailable. You can type your memory instead."
+            "Speech recognition is not available for your current device or language. Switch to Type mode to keep creating this Echo."
         case .microphonePermissionDenied:
-            "Microphone permission is required to capture voice. You can type your memory instead."
+            "Microphone access is off for Echo. Enable it in Settings, or switch to Type mode to keep creating this Echo."
         case .missingUsageDescription(let key):
             "Missing \(key) in the app Info settings. Add the privacy usage description in Xcode before recording."
         case .microphoneUnavailable:
-            "Echo could not access a microphone on this device. You can type your memory instead."
+            "Echo could not find a usable microphone on this device. Switch to Type mode to keep creating this Echo."
         }
     }
 }

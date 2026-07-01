@@ -4,14 +4,35 @@ import SwiftUI
 struct EchoDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \EchoMemoryStoredLink.createdAt, order: .reverse) private var storedLinks: [EchoMemoryStoredLink]
 
     let memory: EchoMemory
+    let candidateMemories: [EchoMemory]
+
+    @State private var relatedLinks: [EchoMemoryLink] = []
+    @State private var isLoadingRelatedLinks = false
     @State private var isEditing = false
     @State private var deleteError: EchoUserFacingError?
     @State private var isShowingUndoBubble = false
     @State private var pendingDismissTask: Task<Void, Never>?
 
     private let persistenceService = EchoMemoryPersistenceService()
+    private let linkService = EchoMemoryLinkService()
+
+    init(memory: EchoMemory, candidateMemories: [EchoMemory] = []) {
+        self.memory = memory
+        self.candidateMemories = candidateMemories
+    }
+
+    private var displayedRelatedLinks: [EchoMemoryLink] {
+        linkService.displayedLinks(from: relatedLinks)
+    }
+
+    private var relatedLinkRefreshID: String {
+        let memoryIDs = candidateMemories.map(\.id.uuidString).joined(separator: ",")
+        let linkIDs = storedLinks.map(\.id.uuidString).joined(separator: ",")
+        return memory.id.uuidString + "|" + memoryIDs + "|" + linkIDs
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -25,6 +46,7 @@ struct EchoDetailView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         detailRow("Category", memory.category.title)
                         detailRow("Emotion", memory.emotion.title)
+                        detailRow("Status", memory.discoveryStatus.title)
                         detailRow("Created", memory.createdAt.formatted(date: .abbreviated, time: .omitted))
 
                         if let year = memory.year, !year.isEmpty {
@@ -34,6 +56,8 @@ struct EchoDetailView: View {
                     .padding(16)
                     .background(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    relatedEchoesSection
                 }
                 .padding(20)
             }
@@ -66,7 +90,7 @@ struct EchoDetailView: View {
             }
         }
         .sheet(isPresented: $isEditing) {
-            EditEchoView(memory: memory)
+            EditEchoView(memory: memory, candidateMemories: candidateMemories)
         }
         .alert(item: $deleteError) { error in
             Alert(
@@ -75,9 +99,106 @@ struct EchoDetailView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .task(id: relatedLinkRefreshID) {
+            await loadRelatedLinks()
+        }
         .onDisappear {
             pendingDismissTask?.cancel()
         }
+    }
+
+    @ViewBuilder
+    private var relatedEchoesSection: some View {
+        if isLoadingRelatedLinks {
+            detailSection(title: "Related Echoes", text: "Looking for meaningful connections...")
+        } else if !displayedRelatedLinks.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Related Echoes")
+                        .font(.headline)
+
+#if DEBUG
+                    Spacer()
+
+                    Text("\(displayedRelatedLinks.count)/\(relatedLinks.count) shown")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+#endif
+                }
+
+                ForEach(displayedRelatedLinks) { link in
+                    NavigationLink {
+                        EchoDetailView(memory: link.target, candidateMemories: candidateMemories)
+                    } label: {
+                        relatedEchoRow(link)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(16)
+            .background(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        } else {
+#if DEBUG
+            detailSection(title: "Related Echoes", text: relatedLinks.isEmpty ? "No links for this Echo yet. Use Rebuild Echo Links after loading samples, or create another related Echo." : "\(relatedLinks.count) stored link(s), but none reach the display score threshold yet.")
+#endif
+        }
+    }
+
+#if DEBUG
+    private func debugMetric(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .fontWeight(.medium)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+#endif
+
+    private func relatedEchoRow(_ link: EchoMemoryLink) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: link.basis.symbolName)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(link.target.title)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text(link.basis.title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+#if DEBUG
+                HStack(spacing: 6) {
+                    debugMetric("Score \(link.score)")
+                    debugMetric(link.confidence.rawValue.capitalized)
+                    debugMetric(link.basis.rawValue)
+                }
+#endif
+
+                Text(link.reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 4)
     }
 
     private var undoBubble: some View {
@@ -101,13 +222,38 @@ struct EchoDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
+    private func loadRelatedLinks() async {
+        guard candidateMemories.contains(where: { $0.id != memory.id && $0.deletedAt == nil }) else {
+            relatedLinks = []
+            return
+        }
+
+        let storedGraphLinks = linkService.storedLinks(
+            for: memory,
+            among: candidateMemories,
+            storedLinks: storedLinks
+        )
+
+        if !storedGraphLinks.isEmpty,
+           !linkService.displayedLinks(from: storedGraphLinks).isEmpty {
+            relatedLinks = storedGraphLinks
+            isLoadingRelatedLinks = false
+            return
+        }
+
+        isLoadingRelatedLinks = true
+        let links = await linkService.suggestedLinks(for: memory, among: candidateMemories)
+        relatedLinks = linkService.displayedLinks(from: links).isEmpty ? storedGraphLinks : links
+        isLoadingRelatedLinks = false
+    }
+
     private func moveMemoryToTrash() {
         do {
             try persistenceService.moveToTrash(memory, in: modelContext)
             isShowingUndoBubble = true
             scheduleDismissAfterUndoWindow()
         } catch {
-            deleteError = EchoUserFacingError(message: error.localizedDescription)
+            deleteError = .persistenceFailure(action: "update Recently Deleted")
         }
     }
 
@@ -118,7 +264,7 @@ struct EchoDetailView: View {
             try persistenceService.restore(memory, in: modelContext)
             isShowingUndoBubble = false
         } catch {
-            deleteError = EchoUserFacingError(message: error.localizedDescription)
+            deleteError = .persistenceFailure(action: "update Recently Deleted")
         }
     }
 
@@ -175,5 +321,5 @@ struct EchoDetailView: View {
             )
         )
     }
-    .modelContainer(for: EchoMemory.self, inMemory: true)
+    .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self], inMemory: true)
 }

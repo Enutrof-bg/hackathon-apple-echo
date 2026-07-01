@@ -97,7 +97,7 @@ struct RecentlyDeletedView: View {
         do {
             try persistenceService.restore(memory, in: modelContext)
         } catch {
-            actionError = EchoUserFacingError(message: error.localizedDescription)
+            actionError = .persistenceFailure(action: "update Recently Deleted")
         }
     }
 
@@ -105,7 +105,7 @@ struct RecentlyDeletedView: View {
         do {
             try persistenceService.deletePermanently(memory, in: modelContext)
         } catch {
-            actionError = EchoUserFacingError(message: error.localizedDescription)
+            actionError = .persistenceFailure(action: "update Recently Deleted")
         }
     }
 }
@@ -114,5 +114,5 @@ struct RecentlyDeletedView: View {
     NavigationStack {
         RecentlyDeletedView(memories: [])
     }
-    .modelContainer(for: EchoMemory.self, inMemory: true)
+    .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self], inMemory: true)
 }

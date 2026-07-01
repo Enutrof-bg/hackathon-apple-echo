@@ -4,6 +4,8 @@ import SwiftUI
 struct CaptureView: View {
     @Environment(\.dismiss) private var dismiss
 
+    var existingMemories: [EchoMemory] = []
+
     @State private var inputMode: CaptureInputMode = .speech
     @State private var transcript = ""
     @State private var generatedDraft: EchoMemoryDraft?
@@ -72,7 +74,7 @@ struct CaptureView: View {
                 }
             }
             .sheet(item: $generatedDraft) { draft in
-                ReviewCardView(draft: draft) {
+                ReviewCardView(draft: draft, existingMemories: existingMemories) {
                     generatedDraft = nil
                     dismiss()
                 }
@@ -104,6 +106,7 @@ struct CaptureView: View {
                     .foregroundStyle(transcriptionService.state.isListening ? .red : .blue)
             }
             .accessibilityLabel(transcriptionService.state.isListening ? "Stop Recording" : "Start Recording")
+            .disabled(transcriptionService.state.isStopping)
 
             Text(transcriptionService.state.statusText)
                 .font(.headline)
@@ -177,6 +180,9 @@ struct CaptureView: View {
         if transcriptionService.state.isListening {
             transcriptionService.stopTranscribing()
         } else {
+            transcriptionService.updateContextualStrings(
+                SpeechRecognitionContextProvider.contextualStrings(from: existingMemories)
+            )
             await transcriptionService.startTranscribing()
         }
     }
@@ -191,12 +197,14 @@ struct CaptureView: View {
         errorMessage = nil
         isCreatingCard = true
         transcriptionService.stopTranscribing()
-        generatedDraft = await extractionService.createDraft(from: cleanedTranscript)
+        let result = await extractionService.createDraftResult(from: cleanedTranscript)
+        generatedDraft = result.draft
+        errorMessage = result.notice
         isCreatingCard = false
     }
 }
 
 #Preview {
     CaptureView()
-        .modelContainer(for: EchoMemory.self, inMemory: true)
+        .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self], inMemory: true)
 }

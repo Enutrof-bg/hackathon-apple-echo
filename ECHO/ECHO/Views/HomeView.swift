@@ -8,8 +8,16 @@ struct HomeView: View {
     @State private var isShowingCapture = false
     @State private var searchText = ""
     @State private var purgeError: EchoUserFacingError?
+#if DEBUG
+    @State private var isLoadingSampleEchoes = false
+    @State private var isRebuildingLinks = false
+#endif
 
     private let persistenceService = EchoMemoryPersistenceService()
+#if DEBUG
+    private let placeholderService = EchoPlaceholderService()
+    private let linkService = EchoMemoryLinkService()
+#endif
 
     private var activeMemories: [EchoMemory] {
         memories.filter { $0.deletedAt == nil }
@@ -74,7 +82,7 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $isShowingCapture) {
-                CaptureView()
+                CaptureView(existingMemories: activeMemories)
             }
             .task {
                 purgeExpiredDeletedMemoriesIfNeeded()
@@ -105,6 +113,32 @@ struct HomeView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+
+#if DEBUG
+            Button {
+                insertPlaceholderEchoes()
+            } label: {
+                Label(
+                    isLoadingSampleEchoes ? "Generating Samples..." : "Load Sample Echoes",
+                    systemImage: "sparkles"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isLoadingSampleEchoes || isRebuildingLinks)
+
+            Button {
+                rebuildEchoLinks()
+            } label: {
+                Label(
+                    isRebuildingLinks ? "Rebuilding Links..." : "Rebuild Echo Links",
+                    systemImage: "point.3.connected.trianglepath.dotted"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(activeMemories.count < 2 || isLoadingSampleEchoes || isRebuildingLinks)
+#endif
         }
     }
 
@@ -130,7 +164,7 @@ struct HomeView: View {
         LazyVStack(spacing: 12) {
             ForEach(filteredMemories) { memory in
                 NavigationLink {
-                    EchoDetailView(memory: memory)
+                    EchoDetailView(memory: memory, candidateMemories: activeMemories)
                 } label: {
                     EchoCardView(memory: memory)
                 }
@@ -139,16 +173,48 @@ struct HomeView: View {
         }
     }
 
+#if DEBUG
+    private func insertPlaceholderEchoes() {
+        guard !isLoadingSampleEchoes else { return }
+        isLoadingSampleEchoes = true
+
+        Task {
+            defer { isLoadingSampleEchoes = false }
+
+            do {
+                try await placeholderService.insertPlaceholders(in: modelContext, existingMemories: memories)
+            } catch {
+                purgeError = .persistenceFailure(action: "update the local collection")
+            }
+        }
+    }
+
+    private func rebuildEchoLinks() {
+        guard !isRebuildingLinks else { return }
+        isRebuildingLinks = true
+
+        Task {
+            defer { isRebuildingLinks = false }
+
+            do {
+                try linkService.rebuildStoredLinks(for: activeMemories, in: modelContext)
+            } catch {
+                purgeError = .persistenceFailure(action: "update the local collection")
+            }
+        }
+    }
+#endif
+
     private func purgeExpiredDeletedMemoriesIfNeeded() {
         do {
             try persistenceService.purgeExpiredDeletedMemories(memories, in: modelContext)
         } catch {
-            purgeError = EchoUserFacingError(message: error.localizedDescription)
+            purgeError = .persistenceFailure(action: "update the local collection")
         }
     }
 }
 
 #Preview {
     HomeView()
-        .modelContainer(for: EchoMemory.self, inMemory: true)
+        .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self], inMemory: true)
 }

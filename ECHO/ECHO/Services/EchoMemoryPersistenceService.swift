@@ -4,9 +4,14 @@ import SwiftData
 struct EchoMemoryPersistenceService {
     static let trashRetentionDays = 30
 
-    func insert(_ draft: EchoMemoryDraft, in modelContext: ModelContext) throws {
-        modelContext.insert(draft.makePersistedMemory())
+    private let linkService = EchoMemoryLinkService()
+
+    @discardableResult
+    func insert(_ draft: EchoMemoryDraft, in modelContext: ModelContext) throws -> EchoMemory {
+        let memory = draft.makePersistedMemory()
+        modelContext.insert(memory)
         try modelContext.save()
+        return memory
     }
 
     func update(_ memory: EchoMemory, with draft: EchoMemoryDraft, in modelContext: ModelContext) throws {
@@ -18,6 +23,7 @@ struct EchoMemoryPersistenceService {
         memory.memory = draft.memory
         memory.echoLine = draft.echoLine
         memory.year = draft.year
+        memory.discoveryStatus = draft.discoveryStatus
         try modelContext.save()
     }
 
@@ -32,6 +38,7 @@ struct EchoMemoryPersistenceService {
     }
 
     func deletePermanently(_ memory: EchoMemory, in modelContext: ModelContext) throws {
+        try linkService.deleteStoredLinks(relatedTo: memory.id, in: modelContext, save: false)
         modelContext.delete(memory)
         try modelContext.save()
     }
@@ -51,6 +58,7 @@ struct EchoMemoryPersistenceService {
         guard !expiredMemories.isEmpty else { return }
 
         for memory in expiredMemories {
+            try linkService.deleteStoredLinks(relatedTo: memory.id, in: modelContext, save: false)
             modelContext.delete(memory)
         }
 

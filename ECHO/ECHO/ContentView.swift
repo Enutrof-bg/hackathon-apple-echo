@@ -9,5 +9,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: EchoMemory.self, inMemory: true)
+        .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self], inMemory: true)
 }
