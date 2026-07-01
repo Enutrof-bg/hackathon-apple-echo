@@ -2,73 +2,91 @@
 
 ## Product Scope
 
-Echo is an iOS SwiftUI MVP for capturing personal cultural memories.
+Echo is an iOS SwiftUI MVP for capturing personal cultural memories from voice or typed input.
+
+Core promise:
+
+```text
+Speak a memory. Echo turns it into a card you can keep.
+```
+
+Product principle:
+
+```text
+Echo does not collect posters. Echo collects what remains.
+```
 
 Core flow:
 
 ```text
-Speak or type a memory -> Generate a structured Echo card -> Review -> Save to collection
+Speak or type a memory -> Generate a structured Echo card -> Review and edit -> Save to collection
 ```
 
-The app is offline-first. It must not require login, backend services, third-party APIs, poster images, covers, or public sharing in V1.
+The app is offline-first for manual creation, browsing, editing, deleting, restoring, and permanent deletion. V1 must not require login, backend services, third-party APIs, poster images, covers, social sharing, or public profiles.
 
 ## Team Split
 
-The project is developed by two teams:
-
 | Team | Responsibility |
 |---|---|
-| Design | Final screens, visual system, assets, animation, layout polish |
-| Technical | Data model, persistence, Speech, AI extraction, permissions, error handling, App Intents |
+| Design | Final screens, visual system, interaction model, assets, animation, layout polish, empty/error/loading state presentation |
+| Technical | Data model, SwiftData persistence, Speech capture, AI extraction, permissions, error handling, service contracts, App Intents when needed |
 
-The current SwiftUI screens are intentionally basic. They exist to test technical flows and should remain easy for the design team to replace.
+The current SwiftUI screens are functional scaffolding. They validate the end-to-end product flow and should remain easy for the design team to replace without changing the data and service contracts.
 
 ## Current Technical Foundation
 
 | Area | Current Choice |
 |---|---|
+| App platform | iOS |
 | UI framework | SwiftUI |
+| App root | `ECHOApp` -> `ContentView` -> `HomeView` |
 | Local persistence | SwiftData |
-| Persisted data model | `EchoMemory` |
-| Temporary card draft | `EchoMemoryDraft` |
-| Collection loading | `@Query` |
-| Create/save | `EchoMemoryPersistenceService.insert(_:in:)` |
-| Move to trash | `EchoMemoryPersistenceService.moveToTrash(_:in:)` |
-| Restore | `EchoMemoryPersistenceService.restore(_:in:)` |
-| Permanent delete | `EchoMemoryPersistenceService.deletePermanently(_:in:)` |
-| Trash purge | `EchoMemoryPersistenceService.purgeExpiredDeletedMemories(_:in:)` |
-| Edit | `EchoMemoryPersistenceService.update(_:with:in:)` |
-| AI extraction | Temporary local heuristic service returning `EchoMemoryDraft` |
-| Speech | `SpeechTranscriptionService` using Speech + AVFAudio; UI exposes `Speak` and `Type` modes; locale selected from iOS preferred languages |
+| Persisted model | `EchoMemory` |
+| Draft/review model | `EchoMemoryDraft` |
+| Card display protocol | `EchoCardPresentable` |
+| Collection loading | `@Query(sort: \EchoMemory.createdAt, order: .reverse)` |
+| Persistence gateway | `EchoMemoryPersistenceService` |
+| AI extraction | `FoundationModels` structured generation with local heuristic fallback |
+| Speech | `SpeechAnalyzer` + `DictationTranscriber` with microphone capture through `CaptureInputSequenceProvider` |
+| Speech locale | Automatic from iOS preferred languages, with fallback locales |
+| Speech context bias | Cultural proper names through `AnalysisContext.contextualStrings` |
+| Error payload | `EchoUserFacingError` for alert-safe messages |
+| Backend | None |
+| Accounts | None |
+| Third-party cultural APIs | None |
 
-## Main Files
+## Main Product Surfaces
 
-| File | Role |
-|---|---|
-| `ECHOApp.swift` | App entry point and SwiftData `modelContainer` setup |
-| `Info.plist` | Privacy usage descriptions for microphone and speech recognition |
-| `ContentView.swift` | Root view wrapper |
-| `Models/EchoMemory.swift` | SwiftData model and category/emotion enums |
-| `Models/EchoMemoryDraft.swift` | Non-persisted draft used by extraction and review flows |
-| `Models/EchoUserFacingError.swift` | Shared UI-safe error payload for alerts |
-| `Models/CaptureInputMode.swift` | Explicit `Speak` / `Type` capture mode contract |
-| `Services/AIExtractionService.swift` | Temporary text-to-card extraction logic returning drafts |
-| `Services/EchoMemoryPersistenceService.swift` | Centralized SwiftData insert/update/trash operations |
-| `Services/SpeechTranscriptionService.swift` | Speech-to-text service with permission and audio capture handling |
-| `Services/SpeechRecognitionLocaleProvider.swift` | Chooses a supported Speech locale from iOS preferred languages |
-| `Views/HomeView.swift` | Basic collection view and capture entry point |
-| `Views/CaptureView.swift` | Basic capture fallback using typed text |
-| `Views/ReviewCardView.swift` | Review generated card before saving |
-| `Views/EditEchoView.swift` | Edit an existing card |
-| `Views/EchoDetailView.swift` | Detail, edit, and delete flow |
-| `Views/Components/EchoCardView.swift` | Basic reusable card rendering |
-| `Views/Components/EchoFormView.swift` | Basic reusable edit form |
+| Surface | Current File | Purpose | Design Status |
+|---|---|---|---|
+| Collection | `Views/HomeView.swift` | Shows active echoes, search, capture entry point, Recently Deleted entry | Replaceable shell |
+| Capture | `Views/CaptureView.swift` | Lets the user speak or type a memory, then create a draft card | Replaceable shell, must preserve speech/text fallback |
+| Review | `Views/ReviewCardView.swift` | Shows generated card, supports inline edit, saves final Echo | Replaceable shell, must preserve review-before-save |
+| Detail | `Views/EchoDetailView.swift` | Shows one saved Echo, supports edit and move to trash | Replaceable shell |
+| Edit | `Views/EditEchoView.swift` | Edits a persisted Echo through draft fields | Replaceable shell |
+| Recently Deleted | `Views/RecentlyDeletedView.swift` | Restores or permanently deletes soft-deleted Echoes | Replaceable shell |
+| Card component | `Views/Components/EchoCardView.swift` | Shared preview/list/detail card rendering for draft and persisted memories | Primary design component |
+| Form component | `Views/Components/EchoFormView.swift` | Shared editable fields for review and edit flows | Replaceable form pattern |
+
+## User Journey
+
+1. User lands on the collection in `HomeView`.
+2. User taps capture from the header or plus toolbar item.
+3. `CaptureView` opens as a sheet.
+4. User chooses `Speak` or `Type`.
+5. In `Speak`, the app requests microphone permission, starts Speech capture, and fills the transcript.
+6. In `Type`, the user writes directly into the transcript field.
+7. User can edit the transcript before generating a card.
+8. `AIExtractionService` creates an `EchoMemoryDraft` from the transcript.
+9. `ReviewCardView` displays the draft as a card.
+10. User can edit fields before saving.
+11. Saving converts the draft into a persisted `EchoMemory` through `EchoMemoryPersistenceService.insert(_:in:)`.
+12. Collection reloads through SwiftData `@Query`.
+13. User can open detail, edit, move to Recently Deleted, undo the move, restore later, or permanently delete.
 
 ## Model Contract
 
-`EchoMemory` is the central persisted model.
-
-Required fields:
+`EchoMemory` is the central persisted model. Keep it stable unless the technical team coordinates a SwiftData migration.
 
 ```swift
 @Model
@@ -83,43 +101,49 @@ final class EchoMemory {
     var year: String?
     var originalTranscript: String?
     var createdAt: Date
+    var deletedAt: Date?
 }
 ```
 
-Design-facing display fields:
+Design-facing fields:
 
-- `title`
-- `creator`
-- `category.title`
-- `category.symbolName`
-- `emotion.title`
-- `memory`
-- `echoLine`
-- `year`
-- `createdAt`
+| Field | Meaning | UI Notes |
+|---|---|---|
+| `title` | Work, place, object, or remembered moment | Primary card title |
+| `creator` | Creator/artist/author if known | Optional metadata |
+| `category.title` | Human-readable category | Can be label, chip, section, icon pairing |
+| `category.symbolName` | SF Symbol for the category | Current icon source |
+| `emotion.title` | Dominant feeling | Can drive color, tone, grouping, or filter design |
+| `memory` | Personal memory text | Main body content |
+| `echoLine` | Short emotional line | Current card quote/tagline |
+| `year` | Optional year | Metadata only |
+| `originalTranscript` | Raw captured input | Internal/debug/reference; not required in primary UI |
+| `createdAt` | Save date | Collection/detail metadata |
+| `deletedAt` | Soft-delete date | Recently Deleted state and retention |
+
+`EchoMemoryDraft` mirrors the display fields before persistence. It is used for AI output, review, edit forms, and conversion into `EchoMemory`.
 
 ## Categories
 
-Current categories:
+Current categories are fixed enum cases in `EchoCategory`:
 
-- Film
-- Book
-- Music
-- Painting
-- Video Game
-- Performance
-- Place
-- Object
-- Other
+| Category | SF Symbol |
+|---|---|
+| Film | `film` |
+| Book | `book.closed` |
+| Music | `music.note` |
+| Painting | `paintpalette` |
+| Video Game | `gamecontroller` |
+| Performance | `theatermasks` |
+| Place | `mappin.and.ellipse` |
+| Object | `cube` |
+| Other | `sparkle` |
 
-Each category exposes:
-
-- `title`: display text
-- `symbolName`: SF Symbol name
+Design can change visual treatment, grouping, color, and icon presentation. Renaming, removing, or adding categories affects extraction, persistence, and possible migration work.
 
 ## Emotions
 
-Current emotions:
+Current emotions are fixed enum cases in `EchoEmotion`:
 
 - Nostalgia
 - Joy
@@ -130,83 +154,141 @@ Current emotions:
 - Love
 - Curiosity
 
-Each emotion exposes:
+Current `EchoCardView` maps emotions to system colors only as placeholder styling. Design can replace this with a final emotional color/token system, but should keep every emotion visually distinct enough for scanning.
 
-- `title`: display text
+## State Model for Design
+
+| Area | States Design Should Cover |
+|---|---|
+| Collection | Empty, populated, search active, no search results, purge error |
+| Capture mode | Speech selected, text selected |
+| Speech | Idle, requesting permission, ready, listening, unavailable, failed |
+| Transcript | Empty, live transcription, edited transcript |
+| Card generation | Idle, creating, failed/heuristic fallback implied by resulting draft |
+| Review | Preview only, edit fields visible, save error |
+| Detail | Active memory, moved-to-trash undo bubble, delete error |
+| Edit | Editing, save error |
+| Recently Deleted | Empty, populated, restore error, permanent delete error |
+| Permissions | Microphone denied, microphone unavailable, speech unavailable |
+
+Manual text entry is not an edge case. It is a first-class fallback and must remain available when speech fails, permissions are denied, language assets are unavailable, or the user simply prefers typing.
+
+## Current Services
+
+| File | Role |
+|---|---|
+| `Services/AIExtractionService.swift` | Converts transcript text into `EchoMemoryDraft`; tries FoundationModels first, falls back to local heuristic extraction |
+| `Services/EchoMemoryPersistenceService.swift` | Central insert, update, move-to-trash, restore, permanent-delete, and purge operations |
+| `Services/SpeechTranscriptionService.swift` | Main speech state machine, permission request, analyzer setup, transcript updates, errors |
+| `Services/SpeechCaptureSessionController.swift` | Actor that starts/stops the underlying `AVCaptureSession` safely |
+| `Services/SpeechRecognitionLocaleProvider.swift` | Chooses a supported dictation locale from preferred languages and fallbacks |
+| `Services/SpeechRecognitionContextProvider.swift` | Provides cultural terms to bias recognition of names and titles |
+
+## Persistence and Deletion
+
+Saved Echoes are never directly removed from the main collection by the detail delete action. They are soft-deleted by setting `deletedAt`.
+
+| Action | Service Method | Behavior |
+|---|---|---|
+| Save new Echo | `insert(_:in:)` | Converts draft to `EchoMemory`, inserts, saves context |
+| Edit Echo | `update(_:with:in:)` | Sanitizes draft, updates fields, saves context |
+| Move to trash | `moveToTrash(_:in:)` | Sets `deletedAt`, saves context |
+| Undo/restore | `restore(_:in:)` | Clears `deletedAt`, saves context |
+| Delete permanently | `deletePermanently(_:in:)` | Deletes object from SwiftData, saves context |
+| Purge expired trash | `purgeExpiredDeletedMemories(_:in:)` | Deletes memories soft-deleted for 30+ days |
+
+`HomeView` filters active memories with `deletedAt == nil`. `RecentlyDeletedView` receives memories where `deletedAt != nil`.
 
 ## UI Replacement Rules
 
-The design team can replace most SwiftUI views as long as these contracts stay intact:
+The design team can replace the current SwiftUI visuals as long as these contracts stay intact:
 
-- Read saved memories with `@Query(sort: \EchoMemory.createdAt, order: .reverse)`.
-- Use `EchoMemoryDraft` for generated or manually edited data before persistence.
-- Save a new memory with `EchoMemoryPersistenceService.insert(_:in:)`.
-- Delete a memory with `EchoMemoryPersistenceService.delete(_:in:)`.
-- Edit an existing memory with `EchoMemoryPersistenceService.update(_:with:in:)`.
-- Keep `EchoMemory`, `EchoMemoryDraft`, `EchoCategory`, and `EchoEmotion` stable unless the technical team coordinates migration changes.
+- Read saved memories with SwiftData query sorted by `createdAt` descending.
+- Filter the main collection to memories where `deletedAt == nil`.
+- Use `EchoMemoryDraft` for generated/review/editable data before saving.
+- Save new memories with `EchoMemoryPersistenceService.insert(_:in:)`.
+- Update existing memories with `EchoMemoryPersistenceService.update(_:with:in:)`.
+- Move memories to Recently Deleted with `EchoMemoryPersistenceService.moveToTrash(_:in:)`.
+- Restore with `EchoMemoryPersistenceService.restore(_:in:)`.
+- Permanently delete with `EchoMemoryPersistenceService.deletePermanently(_:in:)`.
+- Keep `EchoMemory`, `EchoMemoryDraft`, `EchoCategory`, and `EchoEmotion` stable unless migration work is coordinated.
+- Preserve the review step before persistence.
+- Preserve manual editing of AI-generated output.
+- Preserve typed input as a fallback and as an explicit mode.
 
-Recommended reusable entry points for design:
+Recommended reusable entry points while redesigning:
 
 ```swift
 EchoCardView(memory: memory)
-ReviewCardView(memory: generatedMemory)
+ReviewCardView(draft: draft)
 EditEchoView(memory: memory)
 EchoDetailView(memory: memory)
+RecentlyDeletedView(memories: deletedMemories)
 ```
 
-These components may be visually redesigned without changing the data contract.
+These can be visually redesigned or replaced, but the data flow should remain the same.
+
+## Design Integration Notes
+
+The product should feel like a personal cultural archive, not a media database. The UI should prioritize the user memory, emotion, and retained meaning over external artwork or catalog metadata.
+
+Design should define:
+
+- Final card hierarchy for title, creator, category, emotion, echo line, and memory text.
+- Emotion/category visual language.
+- Capture interaction for voice, including recording affordance and live transcript behavior.
+- Review/edit interaction that makes AI output feel correctable, not final.
+- Empty states for collection and Recently Deleted.
+- Error and permission states that keep typing available.
+- Search results and no-results state.
+- Trash/undo/restore affordances.
+- Motion rules for sheet transitions, recording state, card creation, and undo bubble.
+
+Avoid in V1:
+
+- Poster or cover dependency.
+- External cultural catalog lookups.
+- Social feed or sharing surfaces.
+- Account/login onboarding.
+- Heavy onboarding before the user can capture an Echo.
 
 ## Technical Priorities
 
-Proceed in this order:
+Current foundation:
 
-1. Stabilize SwiftData flow: create, save, list, detail, edit, delete.
-2. Add Speech framework transcription with permission handling.
-3. Keep typed text fallback for unsupported voice capture.
-4. Replace the heuristic extraction service with FoundationModels / Apple Intelligence when available.
-5. Keep manual fallback for AI unavailable or generation failure.
-6. Add App Intents / Siri shortcut if time permits.
-7. Polish implementation details after the technical flow is robust.
+1. SwiftData persistence is implemented.
+2. Main create, review, save, list, detail, edit, soft-delete, restore, and permanent-delete flows exist.
+3. Speech transcription is implemented with modern Speech APIs and typed fallback.
+4. FoundationModels structured extraction is implemented with heuristic fallback.
 
-## Design Boundaries for Technical Team
+Next technical work should focus on:
 
-The technical team should avoid heavy visual decisions unless needed to test a flow.
+1. Runtime validation on a real device for microphone permission, dictation language assets, and Speech behavior.
+2. Manual QA of create, edit, delete, restore, purge, and relaunch persistence.
+3. Better visible fallback messaging when FoundationModels is unavailable and heuristic extraction was used.
+4. App Intents / Siri only after the MVP capture flow is stable.
+5. Design integration of the replaceable SwiftUI screens.
 
-Do:
+## Manual QA Checklist
 
-- Build simple screens that expose the flow.
-- Keep components small and replaceable.
-- Use native SwiftUI controls for technical validation.
-- Keep copy in English, matching the product spec.
+Use this checklist before or during design integration:
 
-Do not:
-
-- Spend time on final visual polish before design integration.
-- Add poster images, covers, or external media.
-- Add backend dependencies.
-- Add login or accounts.
-- Overbuild architecture for hackathon scope.
-
-## Current Known Fallbacks
-
-| Situation | Current Behavior |
-|---|---|
-| Speech unavailable | User can continue in the explicit `Type` mode |
-| AI unavailable | Local heuristic service creates a rough card |
-| Empty memory | User receives an error and can still continue manually |
-| No saved data | Empty state appears in collection |
-
-## Next Technical Step
-
-Before adding new features, verify the SwiftData MVP manually:
-
-1. Open app.
-2. Tap `Capture an Echo`.
-3. Type a memory.
-4. Create card.
-5. Save Echo.
-6. Confirm card appears in collection.
-7. Open detail.
-8. Edit fields.
-9. Delete card.
-10. Relaunch app and confirm persistence works.
+1. Open app with no saved data and verify collection empty state.
+2. Tap capture.
+3. Switch between `Speak` and `Type`.
+4. Deny microphone permission and confirm typing remains usable.
+5. Type a memory and create a card.
+6. Review the generated card.
+7. Edit title, creator, category, emotion, memory, echo line, and year.
+8. Save Echo.
+9. Confirm the card appears in collection.
+10. Search by title, memory, echo line, category, and emotion.
+11. Open detail.
+12. Edit saved Echo and confirm updates persist.
+13. Move Echo to Recently Deleted.
+14. Use undo from detail.
+15. Move it again and let the detail dismiss.
+16. Open Recently Deleted.
+17. Restore Echo and confirm it returns to collection.
+18. Move it again and delete permanently.
+19. Relaunch app and confirm persistence state is correct.

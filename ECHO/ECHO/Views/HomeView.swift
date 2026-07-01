@@ -6,7 +6,6 @@ struct HomeView: View {
     @Query(sort: \EchoMemory.createdAt, order: .reverse) private var memories: [EchoMemory]
 
     @State private var isShowingCapture = false
-    @State private var searchText = ""
     @State private var purgeError: EchoUserFacingError?
 #if DEBUG
     @State private var isLoadingSampleEchoes = false
@@ -14,7 +13,6 @@ struct HomeView: View {
 #endif
 
     private let persistenceService = EchoMemoryPersistenceService()
-    private let searchService = EchoSearchService()
 #if DEBUG
     private let placeholderService = EchoPlaceholderService()
     private let linkService = EchoMemoryLinkService()
@@ -24,60 +22,30 @@ struct HomeView: View {
         memories.filter { $0.deletedAt == nil }
     }
 
-    private var deletedMemories: [EchoMemory] {
-        memories.filter { $0.deletedAt != nil }
-    }
-
-    private var filteredMemories: [EchoMemory] {
-        searchService.search(activeMemories, query: searchText)
-    }
-
-    private var isSearching: Bool {
-        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground)
+                EchoStyle.background
                     .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        header
+                VStack(spacing: 0) {
+                    header
 
-                        if activeMemories.isEmpty {
-                            emptyState
-                        } else if filteredMemories.isEmpty, isSearching {
-                            searchEmptyState
-                        } else {
-                            memoryList
-                        }
-                    }
-                    .padding(20)
-                }
-            }
-            .navigationTitle("Echo")
-            .searchable(text: $searchText, prompt: "Search by title, mood, status, memory")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        RecentlyDeletedView(memories: deletedMemories)
-                    } label: {
-                        Image(systemName: "trash")
-                    }
-                    .accessibilityLabel("Recently Deleted")
-                }
+                    Spacer()
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isShowingCapture = true
-                    } label: {
-                        Image(systemName: "plus")
+                    VStack(spacing: 28) {
+                        captureButton
+                        inputOptions
+                        captureCaption
                     }
-                    .accessibilityLabel("Capture an Echo")
+
+                    Spacer()
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 22)
+                .padding(.bottom, 20)
             }
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $isShowingCapture) {
                 CaptureView(existingMemories: activeMemories)
             }
@@ -95,96 +63,108 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Collect the culture that stayed with you.")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Echo")
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .textCase(.uppercase)
+                    .tracking(0.4)
 
-            Button {
-                isShowingCapture = true
-            } label: {
-                Label("Capture an Echo", systemImage: "waveform")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+                Spacer()
 
 #if DEBUG
-            Button {
-                insertPlaceholderEchoes()
-            } label: {
-                Label(
-                    isLoadingSampleEchoes ? "Generating Samples..." : "Load Sample Echoes",
-                    systemImage: "sparkles"
-                )
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .disabled(isLoadingSampleEchoes || isRebuildingLinks)
+                Menu {
+                    Button {
+                        insertPlaceholderEchoes()
+                    } label: {
+                        Label(isLoadingSampleEchoes ? "Generating Samples..." : "Load Sample Echoes", systemImage: "sparkles")
+                    }
+                    .disabled(isLoadingSampleEchoes || isRebuildingLinks)
 
-            Button {
-                rebuildEchoLinks()
-            } label: {
-                Label(
-                    isRebuildingLinks ? "Rebuilding Links..." : "Rebuild Echo Links",
-                    systemImage: "point.3.connected.trianglepath.dotted"
-                )
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .disabled(activeMemories.count < 2 || isLoadingSampleEchoes || isRebuildingLinks)
-#endif
-        }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "rectangle.stack.badge.plus")
-                .font(.system(size: 44))
-                .foregroundStyle(.secondary)
-
-            Text("No echoes yet.")
-                .font(.headline)
-
-            Text("Speak about a work, a place, or a moment that stayed with you.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 56)
-    }
-
-    private var searchEmptyState: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 40))
-                .foregroundStyle(.secondary)
-
-            Text("No matching echoes.")
-                .font(.headline)
-
-            Text("Try a title, creator, emotion, status, or memory detail.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 56)
-    }
-
-    private var memoryList: some View {
-        LazyVStack(spacing: 12) {
-            ForEach(filteredMemories) { memory in
-                NavigationLink {
-                    EchoDetailView(memory: memory, candidateMemories: activeMemories)
+                    Button {
+                        rebuildEchoLinks()
+                    } label: {
+                        Label(isRebuildingLinks ? "Rebuilding Links..." : "Rebuild Echo Links", systemImage: "point.3.connected.trianglepath.dotted")
+                    }
+                    .disabled(activeMemories.count < 2 || isLoadingSampleEchoes || isRebuildingLinks)
                 } label: {
-                    EchoCardView(memory: memory)
+                    Image(systemName: "person.circle")
+                        .font(.title3)
                 }
-                .buttonStyle(.plain)
+#else
+                Image(systemName: "person.circle")
+                    .font(.title3)
+#endif
             }
+
+            Rectangle()
+                .fill(EchoStyle.border)
+                .frame(height: 1)
+        }
+    }
+
+    private var captureButton: some View {
+        ScribbleEchoButton(state: .idle, size: 190) {
+            isShowingCapture = true
+        }
+    }
+
+    private var inputOptions: some View {
+        HStack(spacing: 78) {
+            inputOption("Text", systemImage: "textformat")
+            inputOption("Photo", systemImage: "camera")
+        }
+    }
+
+    private func inputOption(_ title: String, systemImage: String) -> some View {
+        Button {
+            isShowingCapture = true
+        } label: {
+            VStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.title2)
+                    .frame(width: 54, height: 54)
+                    .background(EchoStyle.surface)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(EchoStyle.border.opacity(0.22), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 5)
+
+                Text(title)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .textCase(.uppercase)
+                    .foregroundStyle(EchoStyle.ink)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var captureCaption: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Rectangle()
+                    .fill(EchoStyle.border.opacity(0.7))
+                    .frame(width: 56, height: 1)
+
+                Text("Capture an Echo")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .textCase(.uppercase)
+                    .tracking(1)
+
+                Rectangle()
+                    .fill(EchoStyle.border.opacity(0.7))
+                    .frame(width: 56, height: 1)
+            }
+
+            Text("Speak, type, or take a photo\nof a work that matters to you.")
+                .font(.footnote)
+                .foregroundStyle(EchoStyle.mutedInk)
+                .multilineTextAlignment(.center)
         }
     }
 

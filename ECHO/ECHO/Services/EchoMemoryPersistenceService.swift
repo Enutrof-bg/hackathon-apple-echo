@@ -14,7 +14,7 @@ struct EchoMemoryPersistenceService {
         return memory
     }
 
-    func update(_ memory: EchoMemory, with draft: EchoMemoryDraft, in modelContext: ModelContext) throws {
+    func update(_ memory: EchoMemory, with draft: EchoMemoryDraft, in modelContext: ModelContext, validatedAt: Date = Date()) throws {
         let draft = draft.sanitized
         memory.title = draft.title
         memory.creator = draft.creator
@@ -24,6 +24,13 @@ struct EchoMemoryPersistenceService {
         memory.echoLine = draft.echoLine
         memory.year = draft.year
         memory.discoveryStatus = draft.discoveryStatus
+
+        if draft.discoveryStatus == .notDiscovered {
+            memory.unlockedAt = nil
+        } else if memory.unlockedAt == nil {
+            memory.unlockedAt = validatedAt
+        }
+
         try modelContext.save()
     }
 

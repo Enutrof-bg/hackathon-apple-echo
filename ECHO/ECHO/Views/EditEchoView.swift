@@ -50,7 +50,7 @@ struct EditEchoView: View {
                 )
                 .padding(20)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(EchoStyle.background)
             .navigationTitle("Edit Echo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

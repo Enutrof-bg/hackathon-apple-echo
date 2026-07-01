@@ -12,6 +12,8 @@ struct EchoFormView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            sectionLabel("Specimen")
+
             TextField("Title", text: $title)
                 .textFieldStyle(.roundedBorder)
 
@@ -22,19 +24,25 @@ struct EchoFormView: View {
                 .keyboardType(.numberPad)
                 .textFieldStyle(.roundedBorder)
 
-            Picker("Category", selection: $category) {
-                ForEach(EchoCategory.allCases) { category in
-                    Text(category.title).tag(category)
+            HStack(spacing: 12) {
+                Picker("Category", selection: $category) {
+                    ForEach(EchoCategory.allCases) { category in
+                        Text(category.title).tag(category)
+                    }
                 }
-            }
-            .pickerStyle(.menu)
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Picker("Emotion", selection: $emotion) {
-                ForEach(EchoEmotion.allCases) { emotion in
-                    Text(emotion.title).tag(emotion)
+                Picker("Emotion", selection: $emotion) {
+                    ForEach(EchoEmotion.allCases) { emotion in
+                        Text(emotion.title).tag(emotion)
+                    }
                 }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .pickerStyle(.menu)
+            .padding(12)
+            .echoGlassPanel(tint: EchoStyle.accent.opacity(0.08))
 
             Picker("Status", selection: $discoveryStatus) {
                 ForEach(EchoDiscoveryStatus.allCases) { status in
@@ -44,25 +52,17 @@ struct EchoFormView: View {
             .pickerStyle(.segmented)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Memory")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                sectionLabel("Memory")
 
                 TextEditor(text: $memoryText)
+                    .scrollContentBackground(.hidden)
                     .frame(minHeight: 120)
                     .padding(8)
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                    )
+                    .echoGlassPanel(tint: EchoStyle.accent.opacity(0.06))
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Summary")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                sectionLabel("Summary")
 
                 TextField("Summary", text: $echoLine, axis: .vertical)
                     .lineLimit(2...4)
@@ -70,7 +70,15 @@ struct EchoFormView: View {
             }
         }
         .padding(16)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .echoGlassPanel(tint: EchoStyle.accent.opacity(0.08))
+    }
+
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .fontWeight(.semibold)
+            .textCase(.uppercase)
+            .tracking(1)
+            .foregroundStyle(EchoStyle.accent)
     }
 }

@@ -1,6 +1,7 @@
 import Foundation
 
 protocol EchoCardPresentable {
+    var id: UUID { get }
     var title: String { get }
     var creator: String? { get }
     var category: EchoCategory { get }
@@ -10,6 +11,7 @@ protocol EchoCardPresentable {
     var year: String? { get }
     var originalTranscript: String? { get }
     var discoveryStatus: EchoDiscoveryStatus { get }
+    var unlockedAt: Date? { get }
 }
 
 struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
@@ -23,6 +25,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
     var year: String?
     var originalTranscript: String?
     var discoveryStatus: EchoDiscoveryStatus
+    var unlockedAt: Date?
 
     init(
         id: UUID = UUID(),
@@ -34,7 +37,8 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         echoLine: String,
         year: String? = nil,
         originalTranscript: String? = nil,
-        discoveryStatus: EchoDiscoveryStatus = .discovered
+        discoveryStatus: EchoDiscoveryStatus = .discovered,
+        unlockedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -46,6 +50,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         self.year = year
         self.originalTranscript = originalTranscript
         self.discoveryStatus = discoveryStatus
+        self.unlockedAt = unlockedAt
     }
 
     init(memory: EchoMemory) {
@@ -59,6 +64,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
         self.year = memory.year
         self.originalTranscript = memory.originalTranscript
         self.discoveryStatus = memory.discoveryStatus
+        self.unlockedAt = memory.unlockedAt
     }
 
     var sanitized: EchoMemoryDraft {
@@ -72,7 +78,8 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
             echoLine: echoLine.trimmedFallback("A short summary can be added after the memory is clearer."),
             year: year?.nilIfBlank,
             originalTranscript: originalTranscript?.nilIfBlank,
-            discoveryStatus: discoveryStatus
+            discoveryStatus: discoveryStatus,
+            unlockedAt: unlockedAt
         )
     }
 
@@ -88,6 +95,7 @@ struct EchoMemoryDraft: Identifiable, Equatable, EchoCardPresentable {
             year: draft.year,
             originalTranscript: draft.originalTranscript,
             discoveryStatus: draft.discoveryStatus,
+            unlockedAt: draft.unlockedAt,
             createdAt: createdAt
         )
     }

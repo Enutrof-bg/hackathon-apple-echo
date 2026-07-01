@@ -33,14 +33,10 @@ struct CaptureView: View {
                 }
 
                 TextEditor(text: $transcript)
+                    .scrollContentBackground(.hidden)
                     .frame(minHeight: 180)
                     .padding(10)
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                    )
+                    .echoGlassPanel(tint: EchoStyle.accent.opacity(0.06))
 
                 if let message = activeMessage {
                     Text(message)
@@ -49,20 +45,22 @@ struct CaptureView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                Button(isCreatingCard ? "Creating Card..." : "Create Card") {
+                Button {
                     Task {
                         await createCard()
                     }
+                } label: {
+                    Label(isCreatingCard ? "Creating Card..." : "Create Card", systemImage: "doc.text.magnifyingglass")
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .echoGlassButtonStyle(prominent: true)
                 .controlSize(.large)
-                .frame(maxWidth: .infinity)
                 .disabled(isCreatingCard)
 
                 Spacer()
             }
             .padding(20)
-            .background(Color(.systemGroupedBackground))
+            .background(EchoStyle.background)
             .navigationTitle("Capture")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -102,14 +100,18 @@ struct CaptureView: View {
                 }
             } label: {
                 Image(systemName: transcriptionService.state.isListening ? "stop.circle.fill" : "mic.circle.fill")
-                    .font(.system(size: 84))
-                    .foregroundStyle(transcriptionService.state.isListening ? .red : .blue)
+                    .font(.system(size: 72))
+                    .foregroundStyle(transcriptionService.state.isListening ? .red : EchoStyle.accent)
+                    .frame(width: 104, height: 104)
+                    .echoGlassPanel(tint: transcriptionService.state.isListening ? .red.opacity(0.14) : EchoStyle.accent.opacity(0.16))
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(transcriptionService.state.isListening ? "Stop Recording" : "Start Recording")
             .disabled(transcriptionService.state.isStopping)
 
             Text(transcriptionService.state.statusText)
                 .font(.headline)
+                .foregroundStyle(EchoStyle.graphite)
                 .multilineTextAlignment(.center)
 
             Text("Recognition language: \(transcriptionService.recognitionLanguageName)")
@@ -122,28 +124,30 @@ struct CaptureView: View {
                     transcriptionService.resetTranscript()
                     errorMessage = nil
                 }
-                .buttonStyle(.bordered)
+                .echoGlassButtonStyle()
 
                 if transcriptionService.state.isListening {
                     Button("Stop") {
                         transcriptionService.stopTranscribing()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .echoGlassButtonStyle(prominent: true)
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 12)
+        .padding(18)
+        .echoGlassPanel(tint: EchoStyle.accent.opacity(0.10))
     }
 
     private var textModeHeader: some View {
         VStack(spacing: 8) {
             Image(systemName: "keyboard")
                 .font(.system(size: 44))
-                .foregroundStyle(.blue)
+                .foregroundStyle(EchoStyle.accent)
 
             Text("Type your memory")
                 .font(.headline)
+                .foregroundStyle(EchoStyle.graphite)
 
             Text("You can write directly instead of recording voice.")
                 .font(.subheadline)
@@ -151,7 +155,8 @@ struct CaptureView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 12)
+        .padding(18)
+        .echoGlassPanel(tint: EchoStyle.accent.opacity(0.10))
     }
 
     private var activeMessage: String? {

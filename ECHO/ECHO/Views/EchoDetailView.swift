@@ -1,9 +1,14 @@
 import SwiftData
 import SwiftUI
+#if os(iOS)
+import AudioToolbox
+import UIKit
+#endif
 
 struct EchoDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \EchoMemoryStoredLink.createdAt, order: .reverse) private var storedLinks: [EchoMemoryStoredLink]
 
     let memory: EchoMemory
@@ -14,8 +19,19 @@ struct EchoDetailView: View {
     @State private var isLoadingRelatedLinks = false
     @State private var isLoadingRecommendations = false
     @State private var isEditing = false
+    @State private var isSaving = false
+    @State private var title: String
+    @State private var creator: String
+    @State private var category: EchoCategory
+    @State private var emotion: EchoEmotion
+    @State private var memoryText: String
+    @State private var echoLine: String
+    @State private var year: String
+    @State private var discoveryStatus: EchoDiscoveryStatus
     @State private var deleteError: EchoUserFacingError?
     @State private var isShowingUndoBubble = false
+    @State private var detailStampScale: CGFloat = 1
+    @State private var detailStampOpacity: Double = 1
     @State private var pendingDismissTask: Task<Void, Never>?
 
     private let persistenceService = EchoMemoryPersistenceService()
@@ -25,6 +41,14 @@ struct EchoDetailView: View {
     init(memory: EchoMemory, candidateMemories: [EchoMemory] = []) {
         self.memory = memory
         self.candidateMemories = candidateMemories
+        _title = State(initialValue: memory.title)
+        _creator = State(initialValue: memory.creator ?? "")
+        _category = State(initialValue: memory.category)
+        _emotion = State(initialValue: memory.emotion)
+        _memoryText = State(initialValue: memory.memory)
+        _echoLine = State(initialValue: memory.echoLine)
+        _year = State(initialValue: memory.year ?? "")
+        _discoveryStatus = State(initialValue: memory.discoveryStatus)
     }
 
     private var displayedRelatedLinks: [EchoMemoryLink] {
@@ -46,63 +70,35 @@ struct EchoDetailView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    EchoCardView(memory: memory)
-
-                    detailSection(title: "Memory", text: memory.memory)
-                    detailSection(title: "Summary", text: memory.echoLine)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        detailRow("Category", memory.category.title)
-                        detailRow("Emotion", memory.emotion.title)
-                        detailRow("Status", memory.discoveryStatus.title)
-                        detailRow("Created", memory.createdAt.formatted(date: .abbreviated, time: .omitted))
-
-                        if let year = memory.year, !year.isEmpty {
-                            detailRow("Year", year)
-                        }
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        topBar
+                        titleBlock
+                        aboutSection
+                        metadataSection
+                        relatedEchoesSection
+                        recommendationsSection
                     }
-                    .padding(16)
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                    relatedEchoesSection
-                    recommendationsSection
+                    .padding(.horizontal, 22)
+                    .padding(.top, 18)
+                    .padding(.bottom, 28)
                 }
-                .padding(20)
+
+                bottomActionBar
             }
 
             if isShowingUndoBubble {
                 undoBubble
                     .padding(20)
+                    .padding(.bottom, 72)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isShowingUndoBubble)
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle(memory.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Edit") {
-                    isEditing = true
-                }
-                .disabled(memory.deletedAt != nil)
-            }
-
-            ToolbarItem(placement: .bottomBar) {
-                Button(role: .destructive) {
-                    moveMemoryToTrash()
-                } label: {
-                    Label("Move to Recently Deleted", systemImage: "trash")
-                }
-                .disabled(memory.deletedAt != nil)
-            }
-        }
-        .sheet(isPresented: $isEditing) {
-            EditEchoView(memory: memory, candidateMemories: candidateMemories)
-        }
+        .background(Color.white)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .alert(item: $deleteError) { error in
             Alert(
                 title: Text("Echo could not be moved"),
@@ -116,30 +112,237 @@ struct EchoDetailView: View {
         .task(id: recommendationRefreshID) {
             await loadRecommendations()
         }
+        .onChange(of: memory.unlockedAt) { oldValue, newValue in
+            if oldValue == nil, newValue != nil {
+                playDetailStampImpact()
+            } else if oldValue != nil, newValue == nil {
+                playDetailStampRemoval()
+            }
+        }
         .onDisappear {
             pendingDismissTask?.cancel()
+        }
+    }
+
+    private var topBar: some View {
+        VStack(spacing: 8) {
+            HStack(alignment: .center) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 17, weight: .medium))
+                        .frame(width: 34, height: 34)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Return")
+
+                Spacer()
+
+                Text("Echo Archive")
+                    .font(.system(size: 12, weight: .semibold))
+                    .textCase(.uppercase)
+                    .tracking(1.2)
+
+                Spacer()
+
+                Button {
+                    if isEditing {
+                        saveInlineEdits()
+                    } else {
+                        beginInlineEditing()
+                    }
+                } label: {
+                    Text(isEditing ? "Save" : "Edit")
+                        .font(.system(size: 12, weight: .semibold))
+                        .textCase(.uppercase)
+                        .tracking(0.8)
+                        .frame(width: 42, height: 34)
+                }
+                .buttonStyle(.plain)
+                .disabled(memory.deletedAt != nil || isSaving)
+            }
+
+            rule()
+        }
+    }
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if isEditing {
+                editorialTextField("Title", text: $title, size: 30)
+                    .textInputAutocapitalization(.words)
+                    .padding(.top, 14)
+                    .padding(.bottom, 8)
+
+                editorialTextField("Creator", text: $creator, size: 14)
+                    .textInputAutocapitalization(.words)
+                    .padding(.bottom, 12)
+            } else {
+                Text(memory.title)
+                    .font(.system(size: 30, weight: .regular))
+                    .textCase(.uppercase)
+                    .tracking(0.2)
+                    .foregroundStyle(EchoStyle.ink)
+                    .lineLimit(4)
+                    .minimumScaleFactor(0.72)
+                    .padding(.top, 14)
+                    .padding(.bottom, 8)
+
+                if let creator = memory.creator, !creator.isEmpty {
+                    Text(creator)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(EchoStyle.ink)
+                        .padding(.bottom, 12)
+                }
+            }
+
+            if let unlockedAt = memory.unlockedAt, !isEditing {
+                HStack {
+                    Spacer()
+
+                    DateStampView(
+                        date: unlockedAt,
+                        emotion: memory.emotion,
+                        compact: false,
+                        rotationDegrees: detailStampRotation
+                    )
+                    .scaleEffect(detailStampScale)
+                    .opacity(detailStampOpacity)
+                    .offset(detailStampOffset)
+                    .padding(.bottom, 12)
+                    .transition(.scale(scale: 1.18).combined(with: .opacity))
+                }
+            } else if !isEditing {
+                Spacer(minLength: 28)
+            }
+
+            rule()
+        }
+    }
+
+    private func editorialTextField(_ placeholder: String, text: Binding<String>, size: CGFloat) -> some View {
+        TextField(placeholder, text: text, axis: .vertical)
+            .font(.system(size: size, weight: .regular))
+            .textCase(size >= 24 ? .uppercase : nil)
+            .tracking(size >= 24 ? 0.2 : 0)
+            .foregroundStyle(EchoStyle.ink)
+            .textFieldStyle(.plain)
+            .padding(.vertical, 2)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(EchoStyle.border.opacity(0.28))
+                    .frame(height: 1)
+            }
+    }
+
+    private func editorialTextEditor(_ label: String, text: Binding<String>, minHeight: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.system(size: 10, weight: .semibold))
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .foregroundStyle(EchoStyle.mutedInk)
+
+            TextEditor(text: text)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(EchoStyle.ink)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: minHeight)
+                .padding(8)
+                .overlay(
+                    Rectangle()
+                        .stroke(EchoStyle.border.opacity(0.34), lineWidth: 1)
+                )
+        }
+        .animation(.spring(response: 0.24, dampingFraction: 0.62), value: memory.unlockedAt != nil)
+    }
+
+    private var aboutSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            editorialSectionHeader("About")
+
+            VStack(alignment: .leading, spacing: 14) {
+                if isEditing {
+                    editorialTextEditor("Memory", text: $memoryText, minHeight: 116)
+                    editorialTextEditor("Echo", text: $echoLine, minHeight: 78)
+                } else {
+                    Text(memory.memory)
+                        .font(.system(size: 15, weight: .regular))
+                        .lineSpacing(1.5)
+                        .foregroundStyle(EchoStyle.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(memory.echoLine)
+                        .font(.system(size: 14, weight: .medium))
+                        .lineSpacing(1.5)
+                        .foregroundStyle(EchoStyle.ink.opacity(0.82))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.vertical, 18)
+
+            rule()
+        }
+    }
+
+    private var metadataSection: some View {
+        VStack(spacing: 0) {
+            if isEditing {
+                editableMetadataRow(
+                    leftLabel: "Category",
+                    leftContent: AnyView(categoryPicker),
+                    rightLabel: "Emotion",
+                    rightContent: AnyView(emotionPicker)
+                )
+
+                editableMetadataRow(
+                    leftLabel: "Status",
+                    leftContent: AnyView(statusPicker),
+                    rightLabel: "Created",
+                    rightContent: AnyView(staticMetadataValue(memory.createdAt.formatted(date: .numeric, time: .omitted)))
+                )
+
+                editableMetadataRow(
+                    leftLabel: "Year",
+                    leftContent: AnyView(metadataTextField("Year", text: $year)),
+                    rightLabel: "Entry",
+                    rightContent: AnyView(staticMetadataValue(memory.deletedAt == nil ? "Active" : "Deleted"))
+                )
+            } else {
+                editorialInfoRow(
+                    leftLabel: "Category",
+                    leftValue: memory.category.title,
+                    rightLabel: "Emotion",
+                    rightValue: memory.emotion.title
+                )
+
+                editorialInfoRow(
+                    leftLabel: "Status",
+                    leftValue: memory.discoveryStatus.title,
+                    rightLabel: "Created",
+                    rightValue: memory.createdAt.formatted(date: .numeric, time: .omitted)
+                )
+
+                if let year = memory.year, !year.isEmpty {
+                    editorialInfoRow(
+                        leftLabel: "Year",
+                        leftValue: year,
+                        rightLabel: "Entry",
+                        rightValue: memory.deletedAt == nil ? "Active" : "Deleted"
+                    )
+                }
+            }
         }
     }
 
     @ViewBuilder
     private var relatedEchoesSection: some View {
         if isLoadingRelatedLinks {
-            detailSection(title: "Related Echoes", text: "Looking for meaningful connections...")
+            editorialTextSection(title: "Related Echoes", text: "Looking for meaningful connections...")
         } else if !displayedRelatedLinks.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Related Echoes")
-                        .font(.headline)
-
-#if DEBUG
-                    Spacer()
-
-                    Text("\(displayedRelatedLinks.count)/\(relatedLinks.count) shown")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-#endif
-                }
-
+            linkedSection(title: "Related Echoes", count: displayedRelatedLinks.count) {
                 ForEach(displayedRelatedLinks) { link in
                     NavigationLink {
                         EchoDetailView(memory: link.target, candidateMemories: candidateMemories)
@@ -149,12 +352,12 @@ struct EchoDetailView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(16)
-            .background(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
         } else {
 #if DEBUG
-            detailSection(title: "Related Echoes", text: relatedLinks.isEmpty ? "No links for this Echo yet. Use Rebuild Echo Links after loading samples, or create another related Echo." : "\(relatedLinks.count) stored link(s), but none reach the display score threshold yet.")
+            editorialTextSection(
+                title: "Related Echoes",
+                text: relatedLinks.isEmpty ? "No links for this Echo yet. Use Rebuild Echo Links after loading samples, or create another related Echo." : "\(relatedLinks.count) stored link(s), but none reach the display score threshold yet."
+            )
 #endif
         }
     }
@@ -162,22 +365,9 @@ struct EchoDetailView: View {
     @ViewBuilder
     private var recommendationsSection: some View {
         if isLoadingRecommendations {
-            detailSection(title: "Recommended Next", text: "Looking through your discovery queue...")
+            editorialTextSection(title: "Recommended Next", text: "Looking through your discovery queue...")
         } else if !recommendations.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Recommended Next")
-                        .font(.headline)
-
-#if DEBUG
-                    Spacer()
-
-                    Text("\(recommendations.count) shown")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-#endif
-                }
-
+            linkedSection(title: "Recommended Next", count: recommendations.count) {
                 ForEach(recommendations) { recommendation in
                     NavigationLink {
                         EchoDetailView(memory: recommendation.target, candidateMemories: candidateMemories)
@@ -187,114 +377,312 @@ struct EchoDetailView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(16)
-            .background(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 
-#if DEBUG
-    private func debugMetric(_ text: String) -> some View {
-        Text(text)
-            .font(.caption2)
-            .fontWeight(.medium)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+    private var bottomActionBar: some View {
+        HStack(spacing: 0) {
+            if isEditing {
+                Button {
+                    cancelInlineEditing()
+                } label: {
+                    bottomActionLabel("Cancel")
+                }
+                .buttonStyle(.plain)
+                .disabled(isSaving)
+
+                verticalRule()
+
+                Button {
+                    saveInlineEdits()
+                } label: {
+                    bottomActionLabel(isSaving ? "Saving" : "Save")
+                }
+                .buttonStyle(.plain)
+                .disabled(isSaving)
+            } else {
+                Button {
+                    moveMemoryToTrash()
+                } label: {
+                    bottomActionLabel("Delete")
+                }
+                .buttonStyle(.plain)
+                .disabled(memory.deletedAt != nil)
+
+                verticalRule()
+
+                Button {
+                    dismiss()
+                } label: {
+                    bottomActionLabel("Return")
+                }
+                .buttonStyle(.plain)
+
+                verticalRule()
+
+                Button {
+                    beginInlineEditing()
+                } label: {
+                    bottomActionLabel("Edit")
+                }
+                .buttonStyle(.plain)
+                .disabled(memory.deletedAt != nil)
+            }
+        }
+        .frame(height: 72)
+        .overlay(alignment: .top) { rule() }
+        .background(Color.white.opacity(0.96))
     }
-#endif
 
-    private func recommendationRow(_ recommendation: EchoRecommendation) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: recommendation.basis.symbolName)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
+    private func bottomActionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 13, weight: .medium))
+            .textCase(.uppercase)
+            .tracking(0.7)
+            .foregroundStyle(EchoStyle.ink)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(recommendation.target.title)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+    private func editorialSectionHeader(_ title: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Spacer(minLength: 28)
 
-                    Text(recommendation.basis.title)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            Text(title)
+                .font(.system(size: 20, weight: .regular))
+                .textCase(.uppercase)
+                .tracking(0.2)
+
+            rule()
+        }
+    }
+
+    private func editorialTextSection(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            editorialSectionHeader(title)
+
+            Text(text)
+                .font(.system(size: 14, weight: .regular))
+                .lineSpacing(1.5)
+                .foregroundStyle(EchoStyle.ink.opacity(0.78))
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 16)
+
+            rule()
+        }
+    }
+
+    private func linkedSection<Content: View>(title: String, count: Int, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            editorialSectionHeader(title)
 
 #if DEBUG
-                HStack(spacing: 6) {
-                    debugMetric("Score \(recommendation.score)")
-                    debugMetric(recommendation.basis.rawValue)
-                }
+            Text("\(count) shown")
+                .font(.system(size: 10, weight: .semibold))
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .foregroundStyle(EchoStyle.mutedInk)
+                .padding(.top, 10)
 #endif
 
-                Text(recommendation.reason)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
+            VStack(spacing: 0) {
+                content()
+            }
+            .padding(.top, 8)
+
+            rule()
+        }
+    }
+
+    private var categoryPicker: some View {
+        Picker("Category", selection: $category) {
+            ForEach(EchoCategory.allCases) { category in
+                Text(category.title).tag(category)
+            }
+        }
+        .pickerStyle(.menu)
+        .tint(EchoStyle.ink)
+    }
+
+    private var emotionPicker: some View {
+        Menu {
+            ForEach(EchoEmotion.allCases) { option in
+                Button(option.title) {
+                    emotion = option
+                }
+            }
+        } label: {
+            Text(emotion.title)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(EchoStyle.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .tint(EchoStyle.ink)
+    }
+
+    private var statusPicker: some View {
+        Picker("Status", selection: $discoveryStatus) {
+            ForEach(EchoDiscoveryStatus.allCases) { status in
+                Text(status.title).tag(status)
+            }
+        }
+        .pickerStyle(.menu)
+        .tint(EchoStyle.ink)
+    }
+
+    private func editableMetadataRow(leftLabel: String, leftContent: AnyView, rightLabel: String, rightContent: AnyView) -> some View {
+        HStack(spacing: 0) {
+            editableMetadataCell(label: leftLabel, leadingInset: 0) {
+                leftContent
             }
 
-            Spacer(minLength: 8)
+            verticalRule()
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            editableMetadataCell(label: rightLabel, leadingInset: 16) {
+                rightContent
+            }
         }
-        .padding(.vertical, 4)
+        .frame(minHeight: 50)
+        .overlay(alignment: .bottom) { rule() }
+    }
+
+    private func editableMetadataCell<Content: View>(label: String, leadingInset: CGFloat, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .textCase(.uppercase)
+                .tracking(0.45)
+                .foregroundStyle(EchoStyle.ink)
+
+            content()
+                .font(.system(size: 13, weight: .regular))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 9)
+        .padding(.leading, leadingInset)
+        .padding(.trailing, 12)
+    }
+
+    private func metadataTextField(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .font(.system(size: 13, weight: .regular))
+            .foregroundStyle(EchoStyle.ink)
+            .textFieldStyle(.plain)
+    }
+
+    private func staticMetadataValue(_ value: String) -> some View {
+        Text(value)
+            .font(.system(size: 13, weight: .regular))
+            .foregroundStyle(EchoStyle.ink.opacity(0.72))
+    }
+
+    private func editorialInfoRow(
+        leftLabel: String,
+        leftValue: String,
+        rightLabel: String,
+        rightValue: String,
+        leftValueColor: Color = EchoStyle.ink,
+        rightValueColor: Color = EchoStyle.ink
+    ) -> some View {
+        HStack(spacing: 0) {
+            editorialInfoCell(label: leftLabel, value: leftValue, leadingInset: 0, valueColor: leftValueColor)
+
+            verticalRule()
+
+            editorialInfoCell(label: rightLabel, value: rightValue, leadingInset: 16, valueColor: rightValueColor)
+        }
+        .frame(minHeight: 46)
+        .overlay(alignment: .bottom) { rule() }
+    }
+
+    private func editorialInfoCell(label: String, value: String, leadingInset: CGFloat, valueColor: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .textCase(.uppercase)
+                .tracking(0.45)
+                .foregroundStyle(EchoStyle.ink)
+                .frame(width: 72, alignment: .leading)
+
+            Text(value)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(valueColor)
+                .lineLimit(2)
+                .minimumScaleFactor(0.78)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 10)
+        .padding(.leading, leadingInset)
+        .padding(.trailing, 12)
+    }
+
+    private func recommendationRow(_ recommendation: EchoRecommendation) -> some View {
+        editorialLinkRow(
+            marker: recommendation.basis.title,
+            title: recommendation.target.title,
+            subtitle: recommendation.reason,
+            debugText: "Score \(recommendation.score)"
+        )
     }
 
     private func relatedEchoRow(_ link: EchoMemoryLink) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: link.basis.symbolName)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
+        editorialLinkRow(
+            marker: link.basis.title,
+            title: link.target.title,
+            subtitle: link.reason,
+            debugText: "Score \(link.score)"
+        )
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(link.target.title)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+    private func editorialLinkRow(marker: String, title: String, subtitle: String, debugText: String) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Text(marker)
+                    .font(.system(size: 10, weight: .semibold))
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+                    .foregroundStyle(EchoStyle.mutedInk)
+                    .frame(width: 82, alignment: .leading)
 
-                    Text(link.basis.title)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .regular))
+                        .textCase(.uppercase)
+                        .tracking(0.15)
+                        .foregroundStyle(EchoStyle.ink)
+                        .lineLimit(2)
+
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundStyle(EchoStyle.ink.opacity(0.72))
+                        .lineLimit(3)
 
 #if DEBUG
-                HStack(spacing: 6) {
-                    debugMetric("Score \(link.score)")
-                    debugMetric(link.confidence.rawValue.capitalized)
-                    debugMetric(link.basis.rawValue)
-                }
+                    Text(debugText)
+                        .font(.system(size: 10, weight: .semibold))
+                        .textCase(.uppercase)
+                        .tracking(0.6)
+                        .foregroundStyle(EchoStyle.mutedInk)
 #endif
+                }
 
-                Text(link.reason)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
+                Spacer(minLength: 6)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(EchoStyle.ink)
             }
+            .padding(.vertical, 13)
 
-            Spacer(minLength: 8)
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            rule(opacity: 0.42)
         }
-        .padding(.vertical, 4)
     }
 
     private var undoBubble: some View {
         HStack(spacing: 12) {
             Text("Moved to Recently Deleted")
-                .font(.subheadline)
+                .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(.white)
 
             Spacer()
@@ -302,14 +690,91 @@ struct EchoDetailView: View {
             Button("Undo") {
                 restoreFromTrash()
             }
-            .font(.subheadline)
-            .fontWeight(.semibold)
+            .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(.white)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.black.opacity(0.86))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private func rule(opacity: Double = 0.72) -> some View {
+        Rectangle()
+            .fill(Color.black.opacity(opacity))
+            .frame(height: 1)
+    }
+
+    private func verticalRule(opacity: Double = 0.72) -> some View {
+        Rectangle()
+            .fill(Color.black.opacity(opacity))
+            .frame(width: 1)
+    }
+
+    private var detailStampRotation: Double {
+        Double((detailStampSeed % 7) - 3)
+    }
+
+    private var detailStampOffset: CGSize {
+        CGSize(
+            width: CGFloat((detailStampSeed % 25) - 12),
+            height: CGFloat(((detailStampSeed / 5) % 17) - 8)
+        )
+    }
+
+    private var detailStampSeed: Int {
+        memory.id.uuidString.unicodeScalars.reduce(0) { partialResult, scalar in
+            partialResult + Int(scalar.value)
+        }
+    }
+
+    private func playDetailStampImpact() {
+        guard !reduceMotion else {
+            detailStampScale = 1
+            detailStampOpacity = 1
+            return
+        }
+
+        detailStampScale = 1.75
+        detailStampOpacity = 0
+
+        withAnimation(.easeIn(duration: 0.10)) {
+            detailStampScale = 0.92
+            detailStampOpacity = 0.84
+        }
+
+#if os(iOS)
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred(intensity: 0.72)
+        AudioServicesPlaySystemSound(1104)
+#endif
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(120))
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.64)) {
+                detailStampScale = 1
+                detailStampOpacity = 1
+            }
+        }
+    }
+
+    private func playDetailStampRemoval() {
+        guard !reduceMotion else { return }
+
+        withAnimation(.easeOut(duration: 0.12)) {
+            detailStampScale = 0.84
+            detailStampOpacity = 0
+        }
+
+#if os(iOS)
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.42)
+        AudioServicesPlaySystemSound(1157)
+#endif
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(160))
+            detailStampScale = 1
+            detailStampOpacity = 1
+        }
     }
 
     private func loadRelatedLinks() async {
@@ -349,6 +814,59 @@ struct EchoDetailView: View {
         isLoadingRecommendations = false
     }
 
+    private var inlineDraft: EchoMemoryDraft {
+        EchoMemoryDraft(
+            id: memory.id,
+            title: title,
+            creator: creator.nilIfBlank,
+            category: category,
+            emotion: emotion,
+            memory: memoryText,
+            echoLine: echoLine,
+            year: year.nilIfBlank,
+            originalTranscript: memory.originalTranscript,
+            discoveryStatus: discoveryStatus,
+            unlockedAt: memory.unlockedAt
+        )
+    }
+
+    private func beginInlineEditing() {
+        resetEditableFields()
+        isEditing = true
+    }
+
+    private func cancelInlineEditing() {
+        resetEditableFields()
+        isEditing = false
+    }
+
+    private func resetEditableFields() {
+        title = memory.title
+        creator = memory.creator ?? ""
+        category = memory.category
+        emotion = memory.emotion
+        memoryText = memory.memory
+        echoLine = memory.echoLine
+        year = memory.year ?? ""
+        discoveryStatus = memory.discoveryStatus
+    }
+
+    private func saveInlineEdits() {
+        guard !isSaving else { return }
+        isSaving = true
+
+        do {
+            try persistenceService.update(memory, with: inlineDraft, in: modelContext)
+            try? linkService.refreshStoredLinks(for: memory, among: candidateMemories, in: modelContext)
+            resetEditableFields()
+            isEditing = false
+        } catch {
+            deleteError = .persistenceFailure(action: "update this Echo")
+        }
+
+        isSaving = false
+    }
+
     private func moveMemoryToTrash() {
         do {
             try persistenceService.moveToTrash(memory, in: modelContext)
@@ -381,34 +899,6 @@ struct EchoDetailView: View {
             }
         }
     }
-
-    private func detailSection(title: String, text: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.headline)
-
-            Text(text)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(16)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func detailRow(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            Text(value)
-                .fontWeight(.medium)
-        }
-        .font(.subheadline)
-    }
 }
 
 #Preview {
@@ -416,6 +906,7 @@ struct EchoDetailView: View {
         EchoDetailView(
             memory: EchoMemory(
                 title: "The Lord of the Rings",
+                creator: "J.R.R. Tolkien",
                 category: .film,
                 emotion: .nostalgia,
                 memory: "I watched it every winter with my brother.",

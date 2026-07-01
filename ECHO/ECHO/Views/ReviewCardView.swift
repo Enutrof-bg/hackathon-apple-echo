@@ -41,7 +41,12 @@ struct ReviewCardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
-                    EchoCardView(memory: previewDraft)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Extracted Observation")
+                            .echoSectionTitle()
+
+                        EchoCardView(memory: previewDraft)
+                    }
 
                     if isEditing {
                         EchoFormView(
@@ -58,7 +63,7 @@ struct ReviewCardView: View {
                 }
                 .padding(20)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(EchoStyle.background)
             .navigationTitle("Review Card")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -80,7 +85,7 @@ struct ReviewCardView: View {
                             await saveDraft()
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .echoGlassButtonStyle(prominent: true)
                     .disabled(isSaving)
                 }
             }

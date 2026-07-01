@@ -26,11 +26,11 @@ struct DiscoverView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemGroupedBackground)
+                EchoStyle.background
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 18) {
                         header
                         queueSection
                         suggestionsSection
@@ -39,7 +39,6 @@ struct DiscoverView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("Discover")
             .sheet(item: $selectedSuggestion) { suggestion in
                 ReviewCardView(draft: suggestion.draft, existingMemories: activeMemories)
             }
@@ -48,13 +47,28 @@ struct DiscoverView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Explore what could become your next Echo.")
-                .font(.title3)
-                .fontWeight(.semibold)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Discover")
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .textCase(.uppercase)
+                    .tracking(0.4)
 
-            Text("Saved discoveries, older memories, and curated suggestions live here until PCC or another recommendation provider takes over.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                Spacer()
+
+                NavigationLink {
+                    DiscoverFilterView()
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.body)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Tune Discover filters")
+            }
+
+            Rectangle()
+                .fill(EchoStyle.border)
+                .frame(height: 1)
         }
     }
 
@@ -76,11 +90,10 @@ struct DiscoverView: View {
         }
     }
 
-    @ViewBuilder
     private var suggestionsSection: some View {
-        discoverSection(title: "New Suggestions", subtitle: "Hardcoded for now; replaceable by PCC later.") {
+        discoverSection(title: "New Suggestions", subtitle: "Curated cards you can add to your collection.") {
             if suggestions.isEmpty {
-                emptySectionText("All current hardcoded suggestions are already in your archive.")
+                emptySectionText("All current suggestions are already in your archive.")
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(suggestions) { suggestion in
@@ -122,11 +135,11 @@ struct DiscoverView: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .echoSectionTitle()
 
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EchoStyle.mutedInk)
             }
 
             content()
@@ -134,24 +147,22 @@ struct DiscoverView: View {
     }
 
     private func suggestionCard(_ suggestion: EchoDiscoverySuggestion) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             EchoCardView(memory: suggestion.draft)
 
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: suggestion.basis.symbolName)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EchoStyle.mutedInk)
                     .frame(width: 18)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(suggestion.basis.title)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Why this card?")
+                        .echoSectionTitle()
 
                     Text(suggestion.reason)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(EchoStyle.mutedInk)
                         .lineLimit(3)
                 }
 
@@ -159,20 +170,24 @@ struct DiscoverView: View {
 
                 Image(systemName: "plus.circle")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EchoStyle.mutedInk)
             }
             .padding(.horizontal, 4)
         }
+        .padding(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(EchoStyle.border.opacity(0.32), lineWidth: 1)
+        )
     }
 
     private func emptySectionText(_ text: String) -> some View {
         Text(text)
             .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(EchoStyle.mutedInk)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .echoGlassPanel(tint: EchoStyle.accent.opacity(0.06))
     }
 }
 

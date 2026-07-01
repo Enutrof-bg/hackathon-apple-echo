@@ -13,6 +13,7 @@ final class EchoMemory {
     var year: String?
     var originalTranscript: String?
     var discoveryStatusRawValue: String?
+    var unlockedAt: Date?
     var createdAt: Date
     var deletedAt: Date?
 
@@ -27,6 +28,7 @@ final class EchoMemory {
         year: String? = nil,
         originalTranscript: String? = nil,
         discoveryStatus: EchoDiscoveryStatus = .discovered,
+        unlockedAt: Date? = nil,
         createdAt: Date = Date(),
         deletedAt: Date? = nil
     ) {
@@ -40,6 +42,7 @@ final class EchoMemory {
         self.year = year
         self.originalTranscript = originalTranscript
         self.discoveryStatusRawValue = discoveryStatus.rawValue
+        self.unlockedAt = unlockedAt ?? (discoveryStatus == .discovered ? createdAt : nil)
         self.createdAt = createdAt
         self.deletedAt = deletedAt
     }

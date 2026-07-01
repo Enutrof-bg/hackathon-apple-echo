@@ -47,7 +47,7 @@ struct RecentlyDeletedView: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: "trash")
+            Image(systemName: "archivebox.circle")
                 .font(.system(size: 40))
                 .foregroundStyle(.secondary)
 
@@ -72,25 +72,43 @@ struct RecentlyDeletedView: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack {
-                Button("Restore") {
+            HStack(spacing: 0) {
+                Button {
                     restore(memory)
+                } label: {
+                    archiveActionLabel("Restore", systemImage: "arrow.uturn.backward")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
 
-                Spacer()
+                Rectangle()
+                    .fill(EchoStyle.border.opacity(0.42))
+                    .frame(width: 1, height: 38)
 
                 Button(role: .destructive) {
                     deletePermanently(memory)
                 } label: {
-                    Text("Delete Permanently")
+                    archiveActionLabel("Erase", systemImage: "xmark")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             }
+            .overlay(
+                Rectangle()
+                    .stroke(EchoStyle.border.opacity(0.54), lineWidth: 1)
+            )
         }
         .padding(12)
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func archiveActionLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.system(size: 12, weight: .semibold))
+            .textCase(.uppercase)
+            .tracking(0.7)
+            .foregroundStyle(EchoStyle.ink)
+            .frame(maxWidth: .infinity, minHeight: 38)
+            .contentShape(Rectangle())
     }
 
     private func restore(_ memory: EchoMemory) {
