@@ -168,7 +168,7 @@ final class SpeechTranscriptionService {
     @available(iOS 27.0, *)
     private func startModernRecognitionSession() async throws {
         await cancelCurrentSession()
-        try audioRecordingService.prepareRecording()
+        try await audioRecordingService.prepareRecording()
         didStopIntentionally = false
         resetTranscriptBuffers(keepingVisibleTranscript: !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
@@ -190,7 +190,7 @@ final class SpeechTranscriptionService {
         recognitionLocale = locale
         recognitionLanguageName = SpeechRecognitionLocaleProvider.displayName(for: locale)
         modernSession = session
-        audioRecordingService.startRecording()
+        await audioRecordingService.startRecording()
     }
     #endif
 
@@ -245,9 +245,7 @@ final class SpeechTranscriptionService {
         resetTranscriptBuffers(keepingVisibleTranscript: !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
         let recognizer = try resolvedLegacySpeechRecognizer()
-        let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.record, mode: .measurement, options: [.duckOthers])
-        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        try await activateLegacyAudioSession()
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
@@ -262,7 +260,7 @@ final class SpeechTranscriptionService {
             throw SpeechTranscriptionError.microphoneUnavailable
         }
 
-        try audioRecordingService.prepareRecording()
+        try await audioRecordingService.prepareRecording()
         removeLegacyAudioTapIfNeeded()
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak request] buffer, _ in
             request?.append(buffer)
@@ -271,7 +269,7 @@ final class SpeechTranscriptionService {
 
         audioEngine.prepare()
         try audioEngine.start()
-        audioRecordingService.startRecording()
+        await audioRecordingService.startRecording()
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor in
@@ -406,7 +404,21 @@ final class SpeechTranscriptionService {
         }
 
         removeLegacyAudioTapIfNeeded()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        deactivateLegacyAudioSession()
+    }
+
+    private func activateLegacyAudioSession() async throws {
+        try await Task.detached(priority: .userInitiated) {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.record, mode: .measurement, options: [.duckOthers])
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        }.value
+    }
+
+    private func deactivateLegacyAudioSession() {
+        Task.detached(priority: .utility) {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
 
     private var isLegacyRecognitionActive: Bool {

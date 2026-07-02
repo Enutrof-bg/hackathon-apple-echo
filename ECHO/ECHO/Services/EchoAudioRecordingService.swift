@@ -42,16 +42,37 @@ enum EchoAudioFileService {
 }
 
 final class EchoAudioRecordingService: NSObject {
+    private let queue = DispatchQueue(label: "com.echo.audio-recording-service", qos: .userInitiated)
     private var recorder: AVAudioRecorder?
     private var currentFileName: String?
     private var currentFileURL: URL?
     private var recordingStartedAt: Date?
 
-    var isRecording: Bool {
-        recorder?.isRecording == true
+    func prepareRecording() async throws {
+        try await performOnQueue {
+            try self.prepareRecordingOnQueue()
+        }
     }
 
-    func prepareRecording() throws {
+    func startRecording() async {
+        await performOnQueue {
+            self.startRecordingOnQueue()
+        }
+    }
+
+    func stopRecording() async -> EchoAudioAttachment? {
+        await performOnQueue {
+            self.stopRecordingOnQueue()
+        }
+    }
+
+    func cancelRecordingAndDeleteFile() async {
+        await performOnQueue {
+            self.cancelRecordingAndDeleteFileOnQueue()
+        }
+    }
+
+    private func prepareRecordingOnQueue() throws {
         cleanupPreparedRecording(deleteFile: false)
 
         let fileName = UUID().uuidString + ".m4a"
@@ -65,13 +86,13 @@ final class EchoAudioRecordingService: NSObject {
         self.currentFileURL = fileURL
     }
 
-    func startRecording() {
+    private func startRecordingOnQueue() {
         guard let recorder, !recorder.isRecording else { return }
         recordingStartedAt = Date()
         recorder.record()
     }
 
-    func stopRecording() async -> EchoAudioAttachment? {
+    private func stopRecordingOnQueue() -> EchoAudioAttachment? {
         guard let recorder else {
             cleanupPreparedRecording(deleteFile: true)
             return nil
@@ -87,9 +108,10 @@ final class EchoAudioRecordingService: NSObject {
         return attachment
     }
 
-    func cancelRecordingAndDeleteFile() async {
-        _ = await stopRecording()
-        EchoAudioFileService.deleteRecording(fileName: currentFileName)
+    private func cancelRecordingAndDeleteFileOnQueue() {
+        let fileName = currentFileName
+        cleanupPreparedRecording(deleteFile: true)
+        EchoAudioFileService.deleteRecording(fileName: fileName)
     }
 
     private func makeAttachmentIfPossible(duration: TimeInterval) -> EchoAudioAttachment? {
@@ -116,6 +138,26 @@ final class EchoAudioRecordingService: NSObject {
         currentFileName = nil
         currentFileURL = nil
         recordingStartedAt = nil
+    }
+
+    private func performOnQueue<T>(_ work: @escaping () throws -> T) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                do {
+                    continuation.resume(returning: try work())
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func performOnQueue<T>(_ work: @escaping () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                continuation.resume(returning: work())
+            }
+        }
     }
 
     private static var recordingSettings: [String: Any] {
