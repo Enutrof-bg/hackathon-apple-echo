@@ -12,6 +12,8 @@ final class EchoMemory {
     var echoLine: String
     var year: String?
     var originalTranscript: String?
+    var audioFileName: String?
+    var audioDuration: TimeInterval?
     var discoveryStatusRawValue: String?
     var unlockedAt: Date?
     var createdAt: Date
@@ -27,6 +29,8 @@ final class EchoMemory {
         echoLine: String,
         year: String? = nil,
         originalTranscript: String? = nil,
+        audioFileName: String? = nil,
+        audioDuration: TimeInterval? = nil,
         discoveryStatus: EchoDiscoveryStatus = .discovered,
         unlockedAt: Date? = nil,
         createdAt: Date = Date(),
@@ -41,6 +45,8 @@ final class EchoMemory {
         self.echoLine = echoLine
         self.year = year
         self.originalTranscript = originalTranscript
+        self.audioFileName = audioFileName
+        self.audioDuration = audioDuration
         self.discoveryStatusRawValue = discoveryStatus.rawValue
         self.unlockedAt = unlockedAt ?? (discoveryStatus == .discovered ? createdAt : nil)
         self.createdAt = createdAt

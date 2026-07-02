@@ -104,6 +104,8 @@ struct EditEchoView: View {
             echoLine: echoLine,
             year: year.nilIfBlank,
             originalTranscript: memory.originalTranscript,
+            audioFileName: memory.audioFileName,
+            audioDuration: memory.audioDuration,
             discoveryStatus: discoveryStatus
         )
     }

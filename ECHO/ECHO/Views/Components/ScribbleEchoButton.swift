@@ -44,9 +44,23 @@ struct ScribbleEchoButton: View {
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Créer un souvenir")
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityHint(accessibilityHint)
         .accessibilityAddTraits(.isButton)
         .sensoryFeedback(.selection, trigger: rippleTrigger)
+    }
+
+    private var accessibilityLabel: String {
+        state == .recording ? "Stop recording an Echo" : "Start recording an Echo"
+    }
+
+    private var accessibilityValue: String {
+        state == .recording ? "Recording in progress" : "Ready to record"
+    }
+
+    private var accessibilityHint: String {
+        state == .recording ? "Double tap to stop voice capture." : "Double tap to open voice capture."
     }
 
     private func playTap() {

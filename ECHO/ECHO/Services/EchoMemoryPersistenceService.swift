@@ -23,6 +23,8 @@ struct EchoMemoryPersistenceService {
         memory.memory = draft.memory
         memory.echoLine = draft.echoLine
         memory.year = draft.year
+        memory.audioFileName = draft.audioFileName
+        memory.audioDuration = draft.audioDuration
         memory.discoveryStatus = draft.discoveryStatus
 
         if draft.discoveryStatus == .notDiscovered {
@@ -45,9 +47,11 @@ struct EchoMemoryPersistenceService {
     }
 
     func deletePermanently(_ memory: EchoMemory, in modelContext: ModelContext) throws {
+        let audioFileName = memory.audioFileName
         try linkService.deleteStoredLinks(relatedTo: memory.id, in: modelContext, save: false)
         modelContext.delete(memory)
         try modelContext.save()
+        EchoAudioFileService.deleteRecording(fileName: audioFileName)
     }
 
     func purgeExpiredDeletedMemories(_ memories: [EchoMemory], in modelContext: ModelContext, now: Date = Date()) throws {
@@ -64,11 +68,14 @@ struct EchoMemoryPersistenceService {
 
         guard !expiredMemories.isEmpty else { return }
 
+        let audioFileNames = expiredMemories.map(\.audioFileName)
+
         for memory in expiredMemories {
             try linkService.deleteStoredLinks(relatedTo: memory.id, in: modelContext, save: false)
             modelContext.delete(memory)
         }
 
         try modelContext.save()
+        audioFileNames.forEach(EchoAudioFileService.deleteRecording)
     }
 }

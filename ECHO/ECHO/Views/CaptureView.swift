@@ -44,6 +44,8 @@ struct CaptureView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .accessibilityLabel("Capture input mode")
+                .accessibilityHint("Choose whether to speak, type, or scan a cover.")
 
                 switch inputMode {
                 case .speech:
@@ -64,6 +66,8 @@ struct CaptureView: View {
                         .frame(minHeight: 180)
                         .padding(10)
                         .echoGlassPanel(tint: EchoStyle.accent.opacity(0.06))
+                        .accessibilityLabel("Echo memory text")
+                        .accessibilityHint("Review or edit the full memory text before creating the card.")
                 }
 
                 if let message = activeMessage {
@@ -85,6 +89,8 @@ struct CaptureView: View {
                     .echoGlassButtonStyle(prominent: true)
                     .controlSize(.large)
                     .disabled(isCreatingCard)
+                    .accessibilityLabel(isCreatingCard ? "Creating Echo card" : "Create Echo card")
+                    .accessibilityHint("Double tap to turn the current memory text into a reviewable Echo card.")
                 }
 
                 Spacer()
@@ -160,7 +166,9 @@ struct CaptureView: View {
                     .echoGlassPanel(tint: transcriptionService.state.isListening ? .red.opacity(0.14) : EchoStyle.accent.opacity(0.16))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(transcriptionService.state.isListening ? "Stop Recording" : "Start Recording")
+            .accessibilityLabel(transcriptionService.state.isListening ? "Stop recording" : "Start recording")
+            .accessibilityValue(transcriptionService.state.statusText)
+            .accessibilityHint(transcriptionService.state.isListening ? "Double tap to finish voice capture." : "Double tap to start dictating your Echo memory.")
             .disabled(transcriptionService.state.isStopping)
 
             Text(transcriptionService.state.statusText)
@@ -179,12 +187,15 @@ struct CaptureView: View {
                     errorMessage = nil
                 }
                 .echoGlassButtonStyle()
+                .accessibilityHint("Double tap to erase the current transcript.")
 
                 if transcriptionService.state.isListening {
                     Button("Stop") {
                         transcriptionService.stopTranscribing()
                     }
                     .echoGlassButtonStyle(prominent: true)
+                    .accessibilityLabel("Stop recording")
+                    .accessibilityHint("Double tap to finish voice capture and keep the transcript.")
                 }
             }
         }
@@ -229,6 +240,8 @@ struct CaptureView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(isScanningCover)
+            .accessibilityLabel(isScanningCover ? "Scanning cover" : "Take cover photo")
+            .accessibilityHint("Double tap to open the camera and prefill title, creator, and year from a cover.")
 
             if !UIImagePickerController.isSourceTypeAvailable(.camera) {
                 Text("Camera is unavailable here, so Echo will open the photo library.")
@@ -254,6 +267,8 @@ struct CaptureView: View {
                     pendingCoverDraft = nil
                 }
                 .font(.caption)
+                .accessibilityLabel("Clear cover metadata")
+                .accessibilityHint("Double tap to remove the scanned title, creator, year, and category.")
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -284,6 +299,21 @@ struct CaptureView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Scanned cover metadata")
+        .accessibilityValue(coverMetadataAccessibilityValue(draft))
+        .accessibilityHint("This metadata will be merged with the memory you speak or type.")
+    }
+
+    private func coverMetadataAccessibilityValue(_ draft: EchoMemoryDraft) -> String {
+        var parts = [draft.title, draft.category.title]
+        if let creator = draft.creator, !creator.isEmpty {
+            parts.insert(creator, at: 1)
+        }
+        if let year = draft.year, !year.isEmpty {
+            parts.append(year)
+        }
+        return parts.joined(separator: ", ")
     }
 
     private var activeMessage: String? {
@@ -304,7 +334,7 @@ struct CaptureView: View {
         }
 
         if pendingCoverDraft != nil, inputMode != .camera {
-            return "Cover metadata is ready. Speak or type the memory so Echo can generate the summary intelligently."
+            return "Cover metadata is ready. Speak or type the memory so Echo can generate the card intelligently."
         }
 
         if didFallbackFromUnavailableCamera {
@@ -369,23 +399,40 @@ struct CaptureView: View {
         isCreatingCard = true
         defer { isCreatingCard = false }
 
+        let captureResult: SpeechCaptureResult?
         let finalTranscript: String
         if inputMode == .speech {
-            finalTranscript = await transcriptionService.finishTranscribingAndReturnTranscript()
+            let result = await transcriptionService.finishTranscribingAndReturnCapture()
+            captureResult = result
+            finalTranscript = result.transcript
             transcript = finalTranscript
         } else {
+            captureResult = nil
             finalTranscript = transcript
         }
 
         let cleanedTranscript = finalTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanedTranscript.isEmpty else {
+            EchoAudioFileService.deleteRecording(fileName: captureResult?.audioAttachment?.fileName)
             errorMessage = "Echo could not shape this memory. Speak or type a memory first."
             return
         }
 
         let result = await extractionService.createDraftResult(from: cleanedTranscript)
-        generatedDraft = mergedDraft(aiDraft: result.draft, coverDraft: pendingCoverDraft)
+        generatedDraft = draftWithAudio(
+            mergedDraft(aiDraft: result.draft, coverDraft: pendingCoverDraft),
+            attachment: captureResult?.audioAttachment
+        )
         errorMessage = result.notice
+    }
+
+    private func draftWithAudio(_ draft: EchoMemoryDraft, attachment: EchoAudioAttachment?) -> EchoMemoryDraft {
+        guard let attachment else { return draft }
+
+        var draft = draft
+        draft.audioFileName = attachment.fileName
+        draft.audioDuration = attachment.duration
+        return draft
     }
 
     private func mergedDraft(aiDraft: EchoMemoryDraft, coverDraft: EchoMemoryDraft?) -> EchoMemoryDraft {
@@ -403,6 +450,8 @@ struct CaptureView: View {
             echoLine: aiDraft.echoLine,
             year: coverDraft.year ?? aiDraft.year,
             originalTranscript: aiDraft.originalTranscript,
+            audioFileName: aiDraft.audioFileName,
+            audioDuration: aiDraft.audioDuration,
             discoveryStatus: aiDraft.discoveryStatus
         )
     }

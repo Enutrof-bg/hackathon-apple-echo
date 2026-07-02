@@ -4,6 +4,11 @@ import Foundation
 import Observation
 import Speech
 
+struct SpeechCaptureResult {
+    let transcript: String
+    let audioAttachment: EchoAudioAttachment?
+}
+
 enum SpeechCaptureState: Equatable {
     case idle
     case requestingPermission
@@ -43,11 +48,14 @@ final class SpeechTranscriptionService {
     private(set) var recognitionLanguageName: String
 
     private var modernSession: Any?
+    private let audioRecordingService = EchoAudioRecordingService()
     private let audioEngine = AVAudioEngine()
     private var speechRecognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var hasLegacyAudioTap = false
+    private var finishTask: Task<Void, Never>?
+    private var recordedAudioAttachment: EchoAudioAttachment?
     private var didStopIntentionally = false
     private var finalizedTranscriptParts: [String] = []
     private var volatileTranscriptPart = ""
@@ -98,29 +106,50 @@ final class SpeechTranscriptionService {
         didStopIntentionally = true
         state = .stopping
 
-        Task {
-            await finishCurrentSession()
+        if finishTask == nil {
+            finishTask = Task { [weak self] in
+                await self?.finishCurrentSession()
+            }
         }
     }
 
     func finishTranscribingAndReturnTranscript() async -> String {
-        guard isCapturing else { return transcript }
+        await finishTranscribingAndReturnCapture().transcript
+    }
+
+    func finishTranscribingAndReturnCapture() async -> SpeechCaptureResult {
+        if let finishTask {
+            await finishTask.value
+            return SpeechCaptureResult(transcript: transcript, audioAttachment: takeRecordedAudioAttachment())
+        }
+
+        guard isCapturing else {
+            return SpeechCaptureResult(transcript: transcript, audioAttachment: takeRecordedAudioAttachment())
+        }
 
         didStopIntentionally = true
         state = .stopping
         await finishCurrentSession()
         try? await Task.sleep(for: .milliseconds(250))
-        return transcript
+        return SpeechCaptureResult(transcript: transcript, audioAttachment: takeRecordedAudioAttachment())
     }
 
     func resetTranscript() {
         transcript = ""
         finalizedTranscriptParts = []
         volatileTranscriptPart = ""
+        EchoAudioFileService.deleteRecording(fileName: recordedAudioAttachment?.fileName)
+        recordedAudioAttachment = nil
     }
 
     func updateContextualStrings(_ strings: [String]) {
         contextualStrings = SpeechRecognitionContextProvider.normalizedContextualStrings(from: strings)
+    }
+
+    private func takeRecordedAudioAttachment() -> EchoAudioAttachment? {
+        let attachment = recordedAudioAttachment
+        recordedAudioAttachment = nil
+        return attachment
     }
 
     private var isCapturing: Bool {
@@ -139,6 +168,7 @@ final class SpeechTranscriptionService {
     @available(iOS 27.0, *)
     private func startModernRecognitionSession() async throws {
         await cancelCurrentSession()
+        try audioRecordingService.prepareRecording()
         didStopIntentionally = false
         resetTranscriptBuffers(keepingVisibleTranscript: !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
@@ -160,6 +190,7 @@ final class SpeechTranscriptionService {
         recognitionLocale = locale
         recognitionLanguageName = SpeechRecognitionLocaleProvider.displayName(for: locale)
         modernSession = session
+        audioRecordingService.startRecording()
     }
     #endif
 
@@ -207,6 +238,9 @@ final class SpeechTranscriptionService {
 
     private func startLegacyRecognitionSession() async throws {
         await cancelCurrentSession()
+        EchoAudioFileService.deleteRecording(fileName: recordedAudioAttachment?.fileName)
+        recordedAudioAttachment = nil
+        finishTask = nil
         didStopIntentionally = false
         resetTranscriptBuffers(keepingVisibleTranscript: !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
@@ -228,6 +262,7 @@ final class SpeechTranscriptionService {
             throw SpeechTranscriptionError.microphoneUnavailable
         }
 
+        try audioRecordingService.prepareRecording()
         removeLegacyAudioTapIfNeeded()
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak request] buffer, _ in
             request?.append(buffer)
@@ -236,6 +271,7 @@ final class SpeechTranscriptionService {
 
         audioEngine.prepare()
         try audioEngine.start()
+        audioRecordingService.startRecording()
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor in
@@ -304,6 +340,9 @@ final class SpeechTranscriptionService {
     }
 
     private func finishCurrentSession() async {
+        recordedAudioAttachment = await audioRecordingService.stopRecording()
+        finishTask = nil
+
         if isLegacyRecognitionActive {
             finishLegacyRecognitionSession()
         }
@@ -331,6 +370,9 @@ final class SpeechTranscriptionService {
     }
 
     private func cancelCurrentSession() async {
+        await audioRecordingService.cancelRecordingAndDeleteFile()
+        finishTask = nil
+
         if isLegacyRecognitionActive {
             cancelLegacyRecognitionSession()
         }
@@ -452,8 +494,12 @@ private final class ModernSpeechTranscriptionSession {
     func start(preferredLocale: Locale) async throws -> Locale {
         didStopIntentionally = false
 
-        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: preferredLocale)
-            ?? SpeechRecognitionLocaleProvider.automaticDictationLocale() else {
+        let locale: Locale
+        if let supportedLocale = await DictationTranscriber.supportedLocale(equivalentTo: preferredLocale) {
+            locale = supportedLocale
+        } else if let automaticLocale = await SpeechRecognitionLocaleProvider.automaticDictationLocale() {
+            locale = automaticLocale
+        } else {
             throw SpeechTranscriptionError.recognizerUnavailable
         }
 
