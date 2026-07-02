@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		E45AA26B2FF3FEEB00FD26B9 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = E45AA2692FF3FEE500FD26B9 /* .gitignore */; };
+		E4A844B82FF6398E00BF545C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E4A844B72FF6398E00BF545C /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -15,6 +16,7 @@
 		E45AA2692FF3FEE500FD26B9 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		E45AA2952FF4261600FD26B9 /* Architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Architecture.md; sourceTree = "<group>"; };
 		E45AA2962FF4261600FD26B9 /* CODEX_PROJECT_MEMORY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODEX_PROJECT_MEMORY.md; sourceTree = "<group>"; };
+		E4A844B72FF6398E00BF545C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -54,6 +56,7 @@
 				000000000000000000000020 /* Products */,
 				E45AA2692FF3FEE500FD26B9 /* .gitignore */,
 				E45AA2942FF425E700FD26B9 /* Docs */,
+				E4A844B72FF6398E00BF545C /* PrivacyInfo.xcprivacy */,
 			);
 			sourceTree = "<group>";
 		};
@@ -133,6 +136,7 @@
 		000000000000000140000000 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				E4A844B82FF6398E00BF545C /* PrivacyInfo.xcprivacy in Resources */,
 				E45AA26B2FF3FEEB00FD26B9 /* .gitignore in Resources */,
 			);
 		};
