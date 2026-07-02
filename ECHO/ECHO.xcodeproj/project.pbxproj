@@ -7,12 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E44273D72FF6619C00B18250 /* Icone.icon in Resources */ = {isa = PBXBuildFile; fileRef = E44273D62FF6619C00B18250 /* Icone.icon */; };
+		E44273D92FF6621F00B18250 /* Icone 2.icon in Resources */ = {isa = PBXBuildFile; fileRef = E44273D82FF6621F00B18250 /* Icone 2.icon */; };
 		E45AA26B2FF3FEEB00FD26B9 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = E45AA2692FF3FEE500FD26B9 /* .gitignore */; };
 		E4A844B82FF6398E00BF545C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E4A844B72FF6398E00BF545C /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* ECHO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ECHO.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E44273D62FF6619C00B18250 /* Icone.icon */ = {isa = PBXFileReference; lastKnownFileType = file; path = Icone.icon; sourceTree = "<group>"; };
+		E44273D82FF6621F00B18250 /* Icone 2.icon */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Icone 2.icon"; sourceTree = "<group>"; };
 		E45AA2692FF3FEE500FD26B9 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		E45AA2952FF4261600FD26B9 /* Architecture.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Architecture.md; sourceTree = "<group>"; };
 		E45AA2962FF4261600FD26B9 /* CODEX_PROJECT_MEMORY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODEX_PROJECT_MEMORY.md; sourceTree = "<group>"; };
@@ -57,6 +61,8 @@
 				E45AA2692FF3FEE500FD26B9 /* .gitignore */,
 				E45AA2942FF425E700FD26B9 /* Docs */,
 				E4A844B72FF6398E00BF545C /* PrivacyInfo.xcprivacy */,
+				E44273D62FF6619C00B18250 /* Icone.icon */,
+				E44273D82FF6621F00B18250 /* Icone 2.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -138,6 +144,8 @@
 			files = (
 				E4A844B82FF6398E00BF545C /* PrivacyInfo.xcprivacy in Resources */,
 				E45AA26B2FF3FEEB00FD26B9 /* .gitignore in Resources */,
+				E44273D72FF6619C00B18250 /* Icone.icon in Resources */,
+				E44273D92FF6621F00B18250 /* Icone 2.icon in Resources */,
 			);
 		};
 /* End PBXResourcesBuildPhase section */
@@ -287,6 +295,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Icone;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -306,7 +315,7 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "";
+				INFOPLIST_KEY_UILaunchStoryboardName = Icone;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -335,6 +344,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Icone;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -354,7 +364,7 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "";
+				INFOPLIST_KEY_UILaunchStoryboardName = Icone;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

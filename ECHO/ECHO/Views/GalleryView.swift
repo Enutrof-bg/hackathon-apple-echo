@@ -50,7 +50,10 @@ struct GalleryView: View {
                         } else {
                             LazyVGrid(columns: columns, spacing: 12) {
                                 ForEach(filteredMemories) { memory in
-                                    GalleryEchoCard(memory: memory) {
+                                    GalleryEchoCard(
+                                        memory: memory,
+                                        candidateMemories: activeMemories
+                                    ) {
                                         toggleDiscoveryStatus(for: memory)
                                     }
                                 }
@@ -156,6 +159,7 @@ struct GalleryView: View {
 
 private struct GalleryEchoCard: View {
     let memory: EchoMemory
+    let candidateMemories: [EchoMemory]
     let onToggleDiscoveryStatus: () -> Void
 
     private var stampButtonTitle: String {
@@ -169,7 +173,7 @@ private struct GalleryEchoCard: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             NavigationLink {
-                EchoDetailView(memory: memory)
+                EchoDetailView(memory: memory, candidateMemories: candidateMemories)
             } label: {
                 EchoCardView(memory: memory)
             }

@@ -134,6 +134,28 @@ struct HomeView: View {
                     .tracking(0.4)
 
                 Spacer()
+
+#if DEBUG
+                Menu {
+                    Button {
+                        insertPlaceholderEchoes()
+                    } label: {
+                        Label(isLoadingSampleEchoes ? "Generating Samples..." : "Load Temporary Echoes", systemImage: "sparkles")
+                    }
+                    .disabled(isLoadingSampleEchoes || isRebuildingLinks || inputControlsAreDisabled)
+
+                    Button {
+                        rebuildEchoLinks()
+                    } label: {
+                        Label(isRebuildingLinks ? "Rebuilding Links..." : "Rebuild Echo Links", systemImage: "point.3.connected.trianglepath.dotted")
+                    }
+                    .disabled(activeMemories.count < 2 || isLoadingSampleEchoes || isRebuildingLinks || inputControlsAreDisabled)
+                } label: {
+                    Image(systemName: "person.circle")
+                        .font(.title3)
+                }
+                .accessibilityLabel("Developer actions")
+#endif
             }
 
             Rectangle()
@@ -362,6 +384,7 @@ struct HomeView: View {
 
             do {
                 try await placeholderService.insertPlaceholders(in: modelContext, existingMemories: memories)
+                statusMessage = "Temporary Echoes are loaded."
             } catch {
                 captureError = .persistenceFailure(action: "update the local collection")
             }
@@ -377,6 +400,7 @@ struct HomeView: View {
 
             do {
                 try linkService.rebuildStoredLinks(for: activeMemories, in: modelContext)
+                statusMessage = "Echo links rebuilt for \(activeMemories.count) cards."
             } catch {
                 captureError = .persistenceFailure(action: "update the local collection")
             }
