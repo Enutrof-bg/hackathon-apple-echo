@@ -18,6 +18,7 @@ struct CaptureView: View {
     @State private var pendingCoverDraft: EchoMemoryDraft?
     @State private var transcriptionService = SpeechTranscriptionService()
     @State private var didAutoStartSpeech = false
+    @State private var didFallbackFromUnavailableCamera = false
 
     private let extractionService = AIExtractionService()
     private let coverScanService = EchoCoverScanService()
@@ -29,14 +30,16 @@ struct CaptureView: View {
     ) {
         self.existingMemories = existingMemories
         self.autoStartSpeech = autoStartSpeech
-        _inputMode = State(initialValue: initialInputMode)
+        let resolvedInputMode = initialInputMode.supportedMode
+        _inputMode = State(initialValue: resolvedInputMode)
+        _didFallbackFromUnavailableCamera = State(initialValue: initialInputMode != resolvedInputMode)
     }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
                 Picker("Input Mode", selection: $inputMode) {
-                    ForEach(CaptureInputMode.allCases) { mode in
+                    ForEach(CaptureInputMode.availableCases) { mode in
                         Text(mode.title).tag(mode)
                     }
                 }
@@ -124,6 +127,12 @@ struct CaptureView: View {
                 transcript = newTranscript
             }
             .onChange(of: inputMode) { _, newMode in
+                if newMode == .camera, !CaptureInputMode.cameraCaptureIsAvailable {
+                    inputMode = .speech
+                    didFallbackFromUnavailableCamera = true
+                    return
+                }
+
                 if newMode != .speech {
                     transcriptionService.stopTranscribing()
                 }
@@ -296,6 +305,10 @@ struct CaptureView: View {
 
         if pendingCoverDraft != nil, inputMode != .camera {
             return "Cover metadata is ready. Speak or type the memory so Echo can generate the summary intelligently."
+        }
+
+        if didFallbackFromUnavailableCamera {
+            return "Camera scan is available on iOS 27 or later. You can still speak or type this Echo."
         }
 
         if inputMode == .speech {

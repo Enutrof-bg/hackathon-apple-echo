@@ -24,16 +24,18 @@ struct EchoAppShortcuts: AppShortcutsProvider {
             systemImageName: "mic.circle"
         )
 
-        AppShortcut(
-            intent: OpenCameraCaptureIntent(),
-            phrases: [
-                "Scan an Echo cover in \(.applicationName)",
-                "Open camera capture in \(.applicationName)",
-                "Capture an Echo cover in \(.applicationName)"
-            ],
-            shortTitle: "Scan Cover",
-            systemImageName: "camera.viewfinder"
-        )
+        if #available(iOS 27.0, *) {
+            AppShortcut(
+                intent: OpenCameraCaptureIntent(),
+                phrases: [
+                    "Scan an Echo cover in \(.applicationName)",
+                    "Open camera capture in \(.applicationName)",
+                    "Capture an Echo cover in \(.applicationName)"
+                ],
+                shortTitle: "Scan Cover",
+                systemImageName: "camera.viewfinder"
+            )
+        }
 
         AppShortcut(
             intent: CreateEchoIntent(),

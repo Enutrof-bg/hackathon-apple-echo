@@ -148,7 +148,7 @@ struct EchoQuickCaptureWidget: Widget {
             EchoQuickCaptureWidgetView(entry: entry)
         }
         .configurationDisplayName("Quick Capture")
-        .description("Start a voice, camera, or regular Echo capture quickly.")
+        .description("Start a voice or regular Echo capture quickly.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
@@ -204,9 +204,11 @@ struct EchoQuickCaptureWidgetView: View {
                         .frame(maxWidth: .infinity)
                 }
 
-                Button(intent: OpenCameraCaptureIntent()) {
-                    Label("Scan", systemImage: "camera.viewfinder")
-                        .frame(maxWidth: .infinity)
+                if CaptureInputMode.cameraCaptureIsAvailable {
+                    Button(intent: OpenCameraCaptureIntent()) {
+                        Label("Scan", systemImage: "camera.viewfinder")
+                            .frame(maxWidth: .infinity)
+                    }
                 }
 
                 Button(intent: OpenCaptureIntent()) {

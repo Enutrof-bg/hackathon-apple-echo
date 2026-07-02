@@ -65,7 +65,7 @@ struct HomeView: View {
             .onChange(of: navigation.captureRequestID) { _, requestID in
                 guard requestID != handledCaptureRequestID else { return }
                 handledCaptureRequestID = requestID
-                captureInitialMode = navigation.requestedCaptureMode
+                captureInitialMode = navigation.requestedCaptureMode.supportedMode
                 captureAutoStartSpeech = navigation.shouldStartSpeechCapture
                 isShowingCapture = true
             }
@@ -104,19 +104,26 @@ struct HomeView: View {
 
     private var captureButton: some View {
         ScribbleEchoButton(state: .idle, size: 190) {
+            captureInitialMode = .speech
+            captureAutoStartSpeech = false
             isShowingCapture = true
         }
     }
 
     private var inputOptions: some View {
         HStack(spacing: 78) {
-            inputOption("Text", systemImage: "textformat")
-            inputOption("Photo", systemImage: "camera")
+            inputOption("Text", systemImage: "textformat", mode: .text)
+
+            if CaptureInputMode.cameraCaptureIsAvailable {
+                inputOption("Photo", systemImage: "camera", mode: .camera)
+            }
         }
     }
 
-    private func inputOption(_ title: String, systemImage: String) -> some View {
+    private func inputOption(_ title: String, systemImage: String, mode: CaptureInputMode) -> some View {
         Button {
+            captureInitialMode = mode.supportedMode
+            captureAutoStartSpeech = false
             isShowingCapture = true
         } label: {
             VStack(spacing: 10) {
@@ -159,11 +166,19 @@ struct HomeView: View {
                     .frame(width: 56, height: 1)
             }
 
-            Text("Speak, type, or take a photo\nof a work that matters to you.")
+            Text(captureCaptionText)
                 .font(.footnote)
                 .foregroundStyle(EchoStyle.mutedInk)
                 .multilineTextAlignment(.center)
         }
+    }
+
+    private var captureCaptionText: String {
+        if CaptureInputMode.cameraCaptureIsAvailable {
+            return "Speak, type, or take a photo\nof a work that matters to you."
+        }
+
+        return "Speak or type a memory\nof a work that matters to you."
     }
 
 #if DEBUG
