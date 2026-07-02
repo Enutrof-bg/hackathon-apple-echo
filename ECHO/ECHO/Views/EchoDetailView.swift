@@ -41,7 +41,7 @@ struct EchoDetailView: View {
     private let linkService = EchoMemoryLinkService()
     private let recommendationService = EchoRecommendationService()
 
-    init(memory: EchoMemory, candidateMemories: [EchoMemory] = []) {
+    init(memory: EchoMemory, candidateMemories: [EchoMemory] = [], startsEditing: Bool = false) {
         self.memory = memory
         self.candidateMemories = candidateMemories
         _title = State(initialValue: memory.title)
@@ -51,6 +51,7 @@ struct EchoDetailView: View {
         _memoryText = State(initialValue: memory.memory)
         _year = State(initialValue: memory.year ?? "")
         _discoveryStatus = State(initialValue: memory.discoveryStatus)
+        _isEditing = State(initialValue: startsEditing)
     }
 
     private var displayedRelatedLinks: [EchoMemoryLink] {

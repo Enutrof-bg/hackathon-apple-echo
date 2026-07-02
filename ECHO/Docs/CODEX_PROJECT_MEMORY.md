@@ -196,11 +196,17 @@ private var deletedMemories: [EchoMemory] {
 CaptureView(existingMemories: activeMemories)
 ```
 
-### Capture: Speak or Type
+### Home Input: Voice, Text, Photo
 
 Done.
 
-`CaptureInputMode` supports explicit `Speak` and `Type` modes. Text mode is not merely a fallback; it is a first-class capture path.
+`HomeView` now owns the primary input experience directly. The old full capture sheet remains in the codebase, but the current home flow is:
+
+- Voice: stay on `HomeView`, animate the central `ScribbleEchoButton`, hide transcript text, finish recording, then send the transcript through `AIExtractionService`.
+- Text: open a compact `TextEchoInputSheet`, keep the submit action in a bottom `safeAreaInset` above the keyboard, use `@FocusState`, keyboard toolbar Done, and `scrollDismissesKeyboard(.interactively)`.
+- Photo: open `CameraImagePicker` directly, scan with `EchoCoverScanService` using Apple Intelligence image analysis with Vision OCR fallback, then save without asking for extra text.
+
+All three inputs save through the same helper in `HomeView`: create an `EchoMemoryDraft`, insert with `EchoMemoryPersistenceService`, create stored links with `EchoMemoryLinkService`, then navigate to `EchoDetailView(startsEditing: true)` so the user lands in editable detail with best-effort data prefilled.
 
 ### Review / Save / Edit / Detail
 
@@ -208,13 +214,13 @@ Done.
 
 Views involved:
 
-- `ReviewCardView`
-- `EditEchoView`
 - `EchoDetailView`
+- `EditEchoView`
+- `ReviewCardView`
 - `EchoFormView`
 - `EchoCardView`
 
-The user can review a generated card, edit fields, save, open detail, edit later, and delete.
+The primary input flow now saves a generated Echo first and opens the detail page in edit mode. `ReviewCardView` still exists for suggestion/review flows, but home voice/text/photo input no longer routes through it.
 
 ### Recently Deleted / Trash
 

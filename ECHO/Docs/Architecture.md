@@ -59,30 +59,27 @@ The current SwiftUI screens are functional scaffolding. They validate the end-to
 
 | Surface | Current File | Purpose | Design Status |
 |---|---|---|---|
-| Collection | `Views/HomeView.swift` | Shows active echoes, search, capture entry point, Recently Deleted entry | Replaceable shell |
-| Capture | `Views/CaptureView.swift` | Lets the user speak or type a memory, then create a draft card | Replaceable shell, must preserve speech/text fallback |
-| Review | `Views/ReviewCardView.swift` | Shows generated card, supports inline edit, saves final Echo | Replaceable shell, must preserve review-before-save |
-| Detail | `Views/EchoDetailView.swift` | Shows one saved Echo, supports edit and move to trash | Replaceable shell |
-| Edit | `Views/EditEchoView.swift` | Edits a persisted Echo through draft fields | Replaceable shell |
+| Home input | `Views/HomeView.swift` | Owns voice, text, and photo input from the first screen; saves generated Echoes and opens detail editing | Primary input shell |
+| Collection | `Views/GalleryView.swift` | Shows active Echo cards and Recently Deleted entry | Replaceable shell |
+| Legacy capture | `Views/CaptureView.swift` | Older full capture sheet kept for compatibility, not the primary home input route | Replaceable / candidate for cleanup |
+| Review | `Views/ReviewCardView.swift` | Review flow still used by suggestions and non-home draft paths | Replaceable shell |
+| Detail | `Views/EchoDetailView.swift` | Shows one saved Echo, supports starting in edit mode, inline edit, audio, links, recommendations, and move to trash | Replaceable shell |
+| Edit | `Views/EditEchoView.swift` | Edits a persisted Echo through draft fields in older navigation paths | Replaceable shell |
 | Recently Deleted | `Views/RecentlyDeletedView.swift` | Restores or permanently deletes soft-deleted Echoes | Replaceable shell |
 | Card component | `Views/Components/EchoCardView.swift` | Shared preview/list/detail card rendering for draft and persisted memories | Primary design component |
 | Form component | `Views/Components/EchoFormView.swift` | Shared editable fields for review and edit flows | Replaceable form pattern |
 
 ## User Journey
 
-1. User lands on the collection in `HomeView`.
-2. User taps capture from the header or plus toolbar item.
-3. `CaptureView` opens as a sheet.
-4. User chooses `Speak` or `Type`.
-5. In `Speak`, the app requests microphone permission, starts Speech capture, and fills the transcript.
-6. In `Type`, the user writes directly into the transcript field.
-7. User can edit the transcript before generating a card.
-8. `AIExtractionService` creates an `EchoMemoryDraft` from the transcript.
-9. `ReviewCardView` displays the draft as a card.
-10. User can edit fields before saving.
-11. Saving converts the draft into a persisted `EchoMemory` through `EchoMemoryPersistenceService.insert(_:in:)`.
-12. Collection reloads through SwiftData `@Query`.
-13. User can open detail, edit, move to Recently Deleted, undo the move, restore later, or permanently delete.
+1. User lands on `HomeView`, which presents the central voice button plus text and photo alternatives.
+2. Voice input stays on `HomeView`: the central button animates while listening, transcript text is not shown, and tapping again finishes capture.
+3. Text input opens a compact `TextEchoInputSheet`; the submit button is pinned with `safeAreaInset` so the keyboard cannot cover it.
+4. Photo input opens `CameraImagePicker` directly, then scans the image through `EchoCoverScanService`.
+5. Voice and text send transcript text through `AIExtractionService`; photo sends the image through Apple Intelligence image analysis with Vision OCR fallback.
+6. Each path creates an `EchoMemoryDraft`, saves it through `EchoMemoryPersistenceService.insert(_:in:)`, and creates graph links with `EchoMemoryLinkService`.
+7. The app navigates immediately to `EchoDetailView(startsEditing: true)` so the user edits the prefilled saved Echo.
+8. Collection reloads through SwiftData `@Query`.
+9. User can later open detail, edit, move to Recently Deleted, undo the move, restore, or permanently delete.
 
 ## Model Contract
 
@@ -163,12 +160,12 @@ Current `EchoCardView` maps emotions to system colors only as placeholder stylin
 | Area | States Design Should Cover |
 |---|---|
 | Collection | Empty, populated, search active, no search results, purge error |
-| Capture mode | Speech selected, text selected |
-| Speech | Idle, requesting permission, ready, listening, unavailable, failed |
-| Transcript | Empty, live transcription, edited transcript |
-| Card generation | Idle, creating, failed/heuristic fallback implied by resulting draft |
-| Review | Preview only, edit fields visible, save error |
-| Detail | Active memory, moved-to-trash undo bubble, delete error |
+| Home input | Idle, voice listening, voice finishing, text sheet open, camera open, AI creating, save failed |
+| Speech | Idle, requesting permission, ready, listening, unavailable, failed; transcript stays hidden in the primary UI |
+| Text popup | Empty, typing, keyboard visible, processing, submit disabled/enabled |
+| Photo input | Camera open, photo selected, Apple Intelligence scanning, Vision OCR fallback, manual correction needed |
+| Card generation | Idle, creating, failed/heuristic fallback implied by resulting editable detail |
+| Detail | Starts in edit mode after input, active memory, moved-to-trash undo bubble, delete error |
 | Edit | Editing, save error |
 | Recently Deleted | Empty, populated, restore error, permanent delete error |
 | Permissions | Microphone denied, microphone unavailable, speech unavailable |
