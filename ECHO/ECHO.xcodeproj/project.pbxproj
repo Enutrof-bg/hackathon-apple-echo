@@ -297,6 +297,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ECHO/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Echo;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Echo uses the camera to scan a cover and prefill an Echo card.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Echo uses the microphone to capture your spoken memory.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Echo can use a selected photo when the camera is unavailable.";
@@ -346,6 +347,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ECHO/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Echo;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Echo uses the camera to scan a cover and prefill an Echo card.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Echo uses the microphone to capture your spoken memory.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Echo can use a selected photo when the camera is unavailable.";
