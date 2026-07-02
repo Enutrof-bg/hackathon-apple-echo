@@ -36,6 +36,18 @@ struct EchoMemoryPersistenceService {
         try modelContext.save()
     }
 
+    func toggleDiscoveryStatus(for memory: EchoMemory, in modelContext: ModelContext, validatedAt: Date = Date()) throws {
+        if memory.discoveryStatus == .discovered {
+            memory.discoveryStatus = .notDiscovered
+            memory.unlockedAt = nil
+        } else {
+            memory.discoveryStatus = .discovered
+            memory.unlockedAt = validatedAt
+        }
+
+        try modelContext.save()
+    }
+
     func moveToTrash(_ memory: EchoMemory, in modelContext: ModelContext, deletedAt: Date = Date()) throws {
         memory.deletedAt = deletedAt
         try modelContext.save()

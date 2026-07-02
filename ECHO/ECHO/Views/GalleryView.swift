@@ -2,9 +2,13 @@ import SwiftData
 import SwiftUI
 
 struct GalleryView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \EchoMemory.createdAt, order: .reverse) private var memories: [EchoMemory]
 
     @State private var selectedFilter: GalleryFilter = .all
+    @State private var statusUpdateError: EchoUserFacingError?
+
+    private let persistenceService = EchoMemoryPersistenceService()
 
     private var activeMemories: [EchoMemory] {
         memories.filter { $0.deletedAt == nil }
@@ -16,10 +20,12 @@ struct GalleryView: View {
 
     private var filteredMemories: [EchoMemory] {
         switch selectedFilter {
-        case .all, .revealed:
+        case .all:
             activeMemories
         case .open:
-            []
+            activeMemories.filter { $0.discoveryStatus == .notDiscovered }
+        case .revealed:
+            activeMemories.filter { $0.discoveryStatus == .discovered }
         }
     }
 
@@ -44,12 +50,9 @@ struct GalleryView: View {
                         } else {
                             LazyVGrid(columns: columns, spacing: 12) {
                                 ForEach(filteredMemories) { memory in
-                                    NavigationLink {
-                                        EchoDetailView(memory: memory)
-                                    } label: {
-                                        EchoCardView(memory: memory)
+                                    GalleryEchoCard(memory: memory) {
+                                        toggleDiscoveryStatus(for: memory)
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                         }
@@ -67,6 +70,21 @@ struct GalleryView: View {
                     .accessibilityLabel("Recently Deleted")
                 }
             }
+            .alert(item: $statusUpdateError) { error in
+                Alert(
+                    title: Text("Echo status could not be updated"),
+                    message: Text(error.message),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
+        }
+    }
+
+    private func toggleDiscoveryStatus(for memory: EchoMemory) {
+        do {
+            try persistenceService.toggleDiscoveryStatus(for: memory, in: modelContext)
+        } catch {
+            statusUpdateError = .persistenceFailure(action: "update this Echo status")
         }
     }
 
@@ -112,6 +130,8 @@ struct GalleryView: View {
                     Capsule()
                         .stroke(EchoStyle.border.opacity(0.42), lineWidth: 1)
                 )
+                .accessibilityLabel("Show \(filter.title.lowercased()) cards")
+                .accessibilityValue(selectedFilter == filter ? "Selected" : "Not selected")
             }
         }
     }
@@ -134,6 +154,65 @@ struct GalleryView: View {
     }
 }
 
+private struct GalleryEchoCard: View {
+    let memory: EchoMemory
+    let onToggleDiscoveryStatus: () -> Void
+
+    private var stampButtonTitle: String {
+        memory.discoveryStatus == .discovered ? "Mark as not discovered" : "Mark as discovered"
+    }
+
+    private var stampButtonImageName: String {
+        memory.discoveryStatus == .discovered ? "seal.fill" : "seal"
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            NavigationLink {
+                EchoDetailView(memory: memory)
+            } label: {
+                EchoCardView(memory: memory)
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.45)
+                    .onEnded { _ in
+                        onToggleDiscoveryStatus()
+                    }
+            )
+            .accessibilityHint("Long press to stamp and change discovery status.")
+
+            Button {
+                onToggleDiscoveryStatus()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(EchoStyle.surface)
+
+                    Image(systemName: stampButtonImageName)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(EchoStyle.ink)
+
+                    if memory.discoveryStatus == .discovered {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 5, weight: .bold))
+                            .foregroundStyle(EchoStyle.ink)
+                    }
+                }
+                .frame(width: 30, height: 30)
+                .overlay(
+                    Circle()
+                        .stroke(memory.discoveryStatus == .discovered ? EchoStyle.surface : EchoStyle.border.opacity(0.34), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .padding(8)
+            .accessibilityLabel(stampButtonTitle)
+            .accessibilityHint("Double tap to toggle this Echo between discovered and not discovered.")
+        }
+    }
+}
+
 private enum GalleryFilter: String, CaseIterable, Identifiable {
     case all
     case open
@@ -152,5 +231,5 @@ private enum GalleryFilter: String, CaseIterable, Identifiable {
 
 #Preview {
     GalleryView()
-        .modelContainer(for: EchoMemory.self, inMemory: true)
+        .modelContainer(for: [EchoMemory.self, EchoMemoryStoredLink.self], inMemory: true)
 }

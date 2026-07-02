@@ -2,8 +2,6 @@ import SwiftUI
 
 struct DiscoverFilterView: View {
     @State private var comfortLevel = 0.48
-    @State private var emotionalIntensity = 0.62
-    @State private var categoryFocus = 0.54
     @State private var selectedEmotion: EchoEmotion = .wonder
     @State private var selectedCategory: EchoCategory = .film
 
@@ -18,7 +16,6 @@ struct DiscoverFilterView: View {
                     emotionSection
                     categorySection
                     discoverySection
-                    previewSection
                 }
                 .padding(20)
             }
@@ -60,13 +57,6 @@ struct DiscoverFilterView: View {
             }
             .pickerStyle(.menu)
             .tint(EchoStyle.ink)
-
-            filterSlider(
-                title: "Emotional intensity",
-                value: $emotionalIntensity,
-                leftLabel: "Subtle",
-                rightLabel: "Strong"
-            )
         }
     }
 
@@ -79,13 +69,6 @@ struct DiscoverFilterView: View {
             }
             .pickerStyle(.menu)
             .tint(EchoStyle.ink)
-
-            filterSlider(
-                title: "Category focus",
-                value: $categoryFocus,
-                leftLabel: "Mixed",
-                rightLabel: "Focused"
-            )
         }
     }
 
@@ -97,34 +80,6 @@ struct DiscoverFilterView: View {
                 leftLabel: "Comfort",
                 rightLabel: "Surprise"
             )
-        }
-    }
-
-    private var previewSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Current Direction")
-                .echoSectionTitle()
-
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(EchoStyle.emotionColor(selectedEmotion))
-                    .frame(width: 9, height: 9)
-
-                Text("\(selectedEmotion.title) / \(selectedCategory.title)")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .textCase(.uppercase)
-                    .tracking(0.6)
-
-                Spacer()
-
-                Text(comfortLevel < 0.5 ? "Comfort" : "Surprise")
-                    .font(.caption)
-                    .foregroundStyle(EchoStyle.mutedInk)
-            }
-            .padding(.vertical, 12)
-            .overlay(alignment: .top) { rule(opacity: 0.5) }
-            .overlay(alignment: .bottom) { rule(opacity: 0.5) }
         }
     }
 
